@@ -1,0 +1,10 @@
+pillow
+selenium
+google-generativeai
+webdriver-manager
+pytz
+pyotp
+beautifulsoup4
+requests
+gitpython
+cryptography

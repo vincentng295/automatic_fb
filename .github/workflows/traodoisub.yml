@@ -1,0 +1,66 @@
+name: Run Auto Traodoisub with Facebook
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+    inputs:
+      json:
+        description: "Input JSON of login list (leave blank to use the backup one)"
+        required: false
+      count:
+        description: "Number of loop of a job, 0 - check only, 999 (default) - inf"
+        default: "999"
+        required: false
+        type: number
+      timelimit:
+        description: "Workflows timelimit in seconds"
+        default: "7200"
+        required: false
+        type: number
+      delay:
+        description: "Delay per job in seconds"
+        default: "100"
+        required: false
+        type: number
+
+jobs:
+  run-tests:
+    runs-on: windows-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Pass GitHub Token
+      GITHUB_REPO: ${{ github.repository }}     # Pass the repository (owner/repo)
+      STORAGE_BRANCE: traodoisub-caches
+
+    steps:
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+          cache: 'pip' # caching pip dependencies
+
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Conditionally cancel previous runs
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.12.1
+        with:
+          access_token: ${{ github.token }}
+
+      # Run the script
+      - name: Run script
+        run: |
+          python traodoisub_v2_timeout.py
+        env:
+          PYTHONUNBUFFERED: "1"
+          PASSWORD: ${{ secrets.PASSWORD }}
+          TDS_TOKEN: ${{ secrets.TDS_TOKEN }}

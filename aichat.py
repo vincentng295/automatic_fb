@@ -1,0 +1,814 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
+from selenium.common.exceptions import *
+import os
+import json
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.keys import Keys
+from datetime import datetime
+import google.generativeai as genai
+import sys
+from PIL import Image
+import base64
+from io import BytesIO
+import requests
+import pytz
+from urllib.parse import urljoin
+from hashlib import md5
+from urllib.parse import urlparse
+import shlex
+import copy
+from pickle_utils import pickle_from_file, pickle_to_file
+from github_utils import upload_file, get_file
+
+sys.stdout.reconfigure(encoding='utf-8')
+
+genai_key = os.getenv("GENKEY")
+ai_prompt = os.getenv("AI_PROMPT")
+scoped_dir = os.getenv("SCPDIR")
+work_jobs = [job for job in os.getenv("WORKJOBS", "aichat,friends").split(",") if job]
+
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN") # Pass GitHub Token
+GITHUB_REPO = os.getenv("GITHUB_REPO")   # Pass the repository (owner/repo)
+STORAGE_BRANCE = os.getenv("STORAGE_BRANCE")
+
+f_intro_txt = "setup/introduction.txt"
+f_rules_txt = "setup/rules.txt"
+
+if ai_prompt == None or ai_prompt == "":
+    f = open(f_intro_txt, "r", encoding='utf-8') # What kind of person will AI simulate?
+    ai_prompt = f.read()
+
+def get_header_prompt(day_and_time, myname, who_chatted, self_facebook_info, facebook_info):
+    return f"""
+I am creating a chat bot / message response model and using your reply as a response. 
+
+Pretending that you are me: {myname}
+{ai_prompt}
+Here is json information about you "{myname}" on Facebook:
+{json.dumps(self_facebook_info, ensure_ascii=False, indent=2)}
+
+Currently, it is {day_and_time}, you receives a message from "{who_chatted}".
+Here is json information about "{who_chatted}":
+{json.dumps(facebook_info, ensure_ascii=False, indent=2)}
+"""
+
+try:
+    f = open(f_rules_txt, "r", encoding='utf-8') # How AI Responds
+    rules_prompt = f.read()
+except Exception:
+    rules_prompt = """
+- Reply naturally and creatively, as if you were a real person.
+- Use Vietnamese (preferred) or English depending on the conversation and the name of the person you are talking to.
+- If the person you are talking to is not Vietnamese, you can speak English, or his/her language
+- Do not switch languages ​​during a conversation unless requested by the other person.
+- Keep responses concise, relevant, and avoid repetition or robotic tone.
+- Stay focused on the last message in the conversation.
+- Avoid unnecessary explanations or details beyond the reply itself.
+- Feel free to introduce yourself when meeting someone new.
+- Make the chat engaging by asking interesting questions.
+- Provide only the response content without introductory phrases or multiple options.
+"""
+
+cwd = os.getcwd()
+print(cwd)
+
+genai.configure(api_key=genai_key)
+model = genai.GenerativeModel('gemini-1.5-flash')
+
+def escape_string(input_string):
+    """
+    Escapes special characters in a string, including replacing newlines with \\n.
+    :param input_string: The string to be escaped.
+    :return: The escaped string.
+    """
+    escaped_string = input_string.replace("\\", "\\\\")  # Escape backslashes
+    escaped_string = escaped_string.replace("\n", "\\n")  # Escape newlines
+    escaped_string = escaped_string.replace("\t", "\\t")  # Escape tabs (optional)
+    escaped_string = escaped_string.replace("\"", "\\\"")  # Escape double quotes
+    escaped_string = escaped_string.replace("\'", "\\\'")  # Escape single quotes
+    return escaped_string
+
+emoji_to_shortcut = [
+    {"emoji": "👍", "shortcut": "(y)"},
+    {"emoji": "😇", "shortcut": "O:)"},
+    {"emoji": "😈", "shortcut": "3:)"},
+    {"emoji": "❤️", "shortcut": "<3"},
+    {"emoji": "😞", "shortcut": ":("},
+    {"emoji": "☹️", "shortcut": ":["},
+    {"emoji": "😊", "shortcut": "^_^"},
+    {"emoji": "😕", "shortcut": "o.O"},
+    {"emoji": "😲", "shortcut": ":O"},
+    {"emoji": "😘", "shortcut": ":*"},
+    {"emoji": "😢", "shortcut": ":'("},
+    {"emoji": "😎", "shortcut": "8-)"},
+    {"emoji": "😆", "shortcut": ":v"},
+    {"emoji": "😸", "shortcut": ":3"},
+    {"emoji": "😁", "shortcut": ":-D"},
+    {"emoji": "🐧", "shortcut": "<(\")"},
+    {"emoji": "😠", "shortcut": ">:("},
+    {"emoji": "😜", "shortcut": ":P"},
+    {"emoji": "😮", "shortcut": ">:O"},
+    {"emoji": "😕", "shortcut": ":/"},
+    {"emoji": "🤖", "shortcut": ":|]"},
+    {"emoji": "🦈", "shortcut": "(^^^)"},
+    {"emoji": "😑", "shortcut": "-_-"},
+    {"emoji": "💩", "shortcut": ":poop:"},
+    {"emoji": "😭", "shortcut": "T_T"},
+]
+
+# Create a dictionary for quick lookup
+emoji_dict = {item["emoji"]: item["shortcut"] for item in emoji_to_shortcut}
+
+def replace_emoji_with_shortcut(text):
+    # Use regex to find all emojis and replace them
+    for emoji, shortcut in emoji_dict.items():
+        text = text.replace(emoji, shortcut)
+    return text
+
+def wait_for_load(driver):
+    WebDriverWait(driver, 10).until(
+        lambda d: d.execute_script("return document.readyState") == "complete"
+    )
+
+def remove_non_bmp_characters(input_string):
+    return ''.join(c for c in input_string if ord(c) <= 0xFFFF)
+    
+def inject_reload(driver, timedelay = 300000):
+    # Insert JavaScript to reload the page after 5 minutes (300,000 ms)
+    reload_script = """
+            if (typeof window.reloadScheduled === 'undefined') {
+                window.reloadScheduled = true;
+                setTimeout(function() {
+                    location.reload();
+                }, arguments[0]);
+            }
+    """
+    driver.execute_script(reload_script, timedelay)
+
+def find_and_get_text(parent, find_by, find_selector):
+    try:
+        return parent.find_element(find_by, find_selector).text
+    except Exception:
+        return None
+
+def find_and_get_list_text(parent, find_by, find_selector):
+    myList = []
+    try:
+        for element in parent.find_elements(find_by, find_selector):
+            try:
+                myList.append(element.text)
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return myList
+
+def switch_to_mobile_view(driver):
+    driver.execute_cdp_cmd("Emulation.setUserAgentOverride", {
+        "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Mobile Safari/537.36"
+    })
+
+def switch_to_desktop_view(driver):
+    driver.execute_cdp_cmd("Emulation.setUserAgentOverride", {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
+    })
+
+def is_cmd(text):
+    return text == "/cmd" or text.startswith("/cmd ")
+
+# Define functions to be called
+import pyotp
+def totp_cmd(secret):
+    return pyotp.TOTP(secret).now()
+
+# Dictionary mapping arg1 to functions
+func = {
+    "totp": totp_cmd,
+}
+
+def parse_and_execute(command):
+    # Parse the command
+    args = shlex.split(command)
+    
+    # Check if the command starts with /cmd
+    if len(args) < 3 or args[0] != "/cmd":
+        return "Invalid command format. Use: /cmd arg1 arg2"
+    
+    # Extract arg1 and arg2
+    arg1, arg2 = args[1], args[2]
+    
+    # Check if arg1 is in func and execute
+    if arg1 in func:
+        try:
+            return func[arg1](arg2)
+        except Exception as e:
+            return f"Error while executing function: {e}"
+    else:
+        return f"Unknown command: {arg1}"
+
+try:
+    # Set Chrome options
+    chrome_options = Options()
+    prefs = {
+        "profile.default_content_setting_values.popups": 2,  # Block popups
+        "profile.default_content_setting_values.notifications": 1  # 1 allows notifications, 2 blocks
+    }
+    chrome_options.add_experimental_option("prefs", prefs)
+    #chrome_options.add_argument("--headless=new")  # Enable advanced headless mode
+    chrome_options.add_argument("--disable-gpu")   # Disable GPU acceleration for compatibility
+    chrome_options.add_argument(f"window-size={1920*2},{1080*2}")  # Set custom window size
+    chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+    chrome_options.add_argument('--no-sandbox') 
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])  
+    chrome_options.add_experimental_option('useAutomationExtension', False)
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    chrome_options.add_argument("disable-infobars")
+    chrome_options.add_argument("--force-device-scale-factor=0.25")
+    if scoped_dir != None and scoped_dir != "":
+        chrome_options.add_argument(f"--user-data-dir={scoped_dir}")
+
+    # Initialize the driver
+    driver = webdriver.Chrome(options=chrome_options)
+    actions = ActionChains(driver)
+
+    tz_params = {'timezoneId': 'Asia/Ho_Chi_Minh'}
+    driver.execute_cdp_cmd('Emulation.setTimezoneOverride', tz_params)
+
+    chat_tab = driver.current_window_handle
+    
+    driver.switch_to.new_window('tab')
+    driver.execute_cdp_cmd('Emulation.setTimezoneOverride', tz_params)
+    friend_tab = driver.current_window_handle
+
+    driver.switch_to.new_window('tab')
+    driver.execute_cdp_cmd('Emulation.setTimezoneOverride', tz_params)
+    profile_tab = driver.current_window_handle
+ 
+    driver.switch_to.new_window('tab')
+    driver.execute_cdp_cmd('Emulation.setTimezoneOverride', tz_params)
+    switch_to_mobile_view(driver)
+    worker_tab = driver.current_window_handle
+    
+    driver.switch_to.window(chat_tab)
+    
+    wait = WebDriverWait(driver, 10)
+    
+    print("Đang tải dữ liệu từ cookies")
+    
+    try:
+        f = open("cookies.json", "r")
+        cache_fb = json.load(f)
+    except Exception:
+        cache_fb = json.loads(os.getenv("COOKIES")) #legacy
+
+    try:
+        with open("logininfo.json", "r") as f:
+            login_info = json.load(f)
+            onetimecode = login_info["onetimecode"]
+    except Exception as e:
+        onetimecode = "000000"
+        print(e)
+
+    driver.execute_cdp_cmd("Emulation.setScriptExecutionDisabled", {"value": True})
+    driver.get("https://www.facebook.com")
+    driver.delete_all_cookies()
+    for cookie in cache_fb:
+        driver.add_cookie(cookie)
+    print("Đã khôi phục cookies")
+    driver.execute_cdp_cmd("Emulation.setScriptExecutionDisabled", {"value": False})
+    #print("Vui lòng xác nhận đăng nhập, sau đó nhấn Enter ở đây...")
+    #input()
+    print("Đang đọc thông tin cá nhân...")
+    driver.get("https://www.facebook.com/profile.php")
+    wait_for_load(driver)
+    
+    find_myname = driver.find_elements(By.CSS_SELECTOR, 'h1[class^="html-h1 "]')
+    myname = find_myname[-1].text
+
+    f_self_facebook_info = "self_facebook_info.bin"
+    try:
+        if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+            get_file(GITHUB_TOKEN, GITHUB_REPO, f_self_facebook_info, STORAGE_BRANCE, f_self_facebook_info)
+    except Exception as e:
+        print(e)
+
+    self_facebook_info = pickle_from_file(f_self_facebook_info, { "Facebook name" : myname, "Facebook url" :  driver.current_url })
+    
+    sk_list = [
+            "?sk=about_work_and_education", 
+            "?sk=about_places", 
+            "?sk=about_contact_and_basic_info", 
+            "?sk=about_family_and_relationships", 
+            "?sk=about_details"
+        ]
+    
+    if self_facebook_info.get("Last access", 0) == 0:
+        self_facebook_info["Last access"] = int(time.time())
+        # Loop through the profile sections
+        for sk in sk_list:
+            # Build the full URL for the profile section
+            info_url = urljoin("https://www.facebook.com/profile.php", sk)
+            driver.get(info_url)
+
+            # Wait for the page to load
+            wait_for_load(driver)
+
+            # Find the info elements
+            info_elements = driver.find_elements(By.CSS_SELECTOR, 'div[class="xyamay9 xqmdsaz x1gan7if x1swvt13"] > div')
+
+            # Loop through each info element
+            for info_element in info_elements:
+                title = find_and_get_text(info_element, By.CSS_SELECTOR, 'div[class="xieb3on x1gslohp"]')
+                if title is not None:
+                    detail = []
+
+                    # Append the text lists to the detail array
+                    detail.extend(find_and_get_list_text(info_element, By.CSS_SELECTOR, 'div[class="x1hq5gj4"]'))
+                    detail.extend(find_and_get_list_text(info_element, By.CSS_SELECTOR, 'div[class="xat24cr"]'))
+
+                    # Add title and details to the facebook_info dictionary
+                    self_facebook_info[title] = detail
+        pickle_to_file(f_self_facebook_info, self_facebook_info)
+        if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+            upload_file(GITHUB_TOKEN, GITHUB_REPO, f_self_facebook_info, STORAGE_BRANCE)
+
+    print(myname)
+    print(json.dumps(self_facebook_info, ensure_ascii=False, indent=2))
+    print(ai_prompt)
+    
+    driver.switch_to.window(chat_tab)
+    driver.get("https://www.facebook.com/messages/t/156025504001094")
+    driver.switch_to.window(friend_tab)
+    driver.get("https://www.facebook.com/friends")
+    driver.switch_to.window(worker_tab)
+    driver.get("https://www.facebook.com/home.php")
+
+    f_facebook_infos = "facebook_infos.bin"
+    try:
+        if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+            get_file(GITHUB_TOKEN, GITHUB_REPO, f_facebook_infos, STORAGE_BRANCE, f_facebook_infos)
+    except Exception as e:
+        print(e)
+    facebook_infos = pickle_from_file(f_facebook_infos, {})
+
+    print("Bắt đầu khởi động!")
+
+    while True:
+        try:
+            with open("exitnow.txt", "r") as file:
+                content = file.read().strip()  # Read and strip any whitespace/newline
+                if content == "1":
+                    if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+                        upload_file(GITHUB_TOKEN, GITHUB_REPO, f_facebook_infos, STORAGE_BRANCE)
+                    break
+        except Exception:
+            pass # Ignore all errors
+
+        try:
+            new_chat_coming = False
+            time.sleep(0.5)
+            if "friends" in work_jobs:
+                driver.switch_to.window(friend_tab)
+                inject_reload(driver)
+
+                try:
+                    for button in driver.find_elements(By.CSS_SELECTOR, 'div[aria-label="Xác nhận"]'):
+                        print("Chấp nhận kết bạn")
+                        driver.execute_script("arguments[0].click();", button)
+                        time.sleep(0.5)
+                except Exception:
+                    pass
+                try:
+                    for button in driver.find_elements(By.CSS_SELECTOR, 'div[aria-label="Xóa"]'):
+                        print("Xóa kết bạn")
+                        driver.execute_script("arguments[0].click();", button)
+                        time.sleep(0.5)
+                except Exception:
+                    pass
+
+            if "autolike" in work_jobs:
+                driver.switch_to.window(worker_tab)
+                inject_reload(driver, 30*60*1000)
+                driver.execute_script("""
+                    if (typeof window.executeLikes === 'undefined') {
+                        window.executeLikes = true;
+                        (async function randomClickDivs() {
+                            // Find all divs with the specific aria-label
+                            const divs = Array.from(document.querySelectorAll('div[aria-label*="like, double tap and hold for more reactions"]')).concat(Array.from(document.querySelectorAll('div[role="button"] > div[style="color:#1877f2;"]')));
+                            if (divs.length === 0) {
+                                console.log('No matching divs found.');
+                                return;
+                            }
+                            console.log(`Found ${divs.length} matching divs.`);
+
+                            // Shuffle the array to randomize the order
+                            const shuffledDivs = divs.sort(() => 0.5 - Math.random());
+
+                            // Select the first 5 divs from the shuffled array
+                            const selectedDivs = shuffledDivs.slice(0, 5);
+
+                            // Click each div with a 10-second delay
+                            for (let i = 0; i < selectedDivs.length; i++) {
+                                console.log(`Clicking div ${i + 1} of 5...`);
+                                selectedDivs[i].click();
+
+                                // Wait for 10 seconds before the next click
+                                await new Promise(resolve => setTimeout(resolve, 10000));
+                            }
+                        })();
+                    }
+                """)
+
+            if "aichat" in work_jobs:
+                driver.switch_to.window(chat_tab)
+                inject_reload(driver)
+                try:
+                    otc_input = driver.find_element(By.CSS_SELECTOR, 'input[autocomplete="one-time-code"]')
+                    driver.execute_script("arguments[0].setAttribute('class', '');", otc_input)
+                    print("Giải mã đoạn chat được mã hóa...")
+                    actions.move_to_element(otc_input).click().perform()
+                    time.sleep(2)
+                    for digit in onetimecode:
+                        actions.move_to_element(otc_input).send_keys(digit).perform()  # Send the digit to the input element
+                        time.sleep(1)  # Wait for 1s before sending the next digit
+                    print("Hoàn tất giải mã!")
+                    time.sleep(5)
+                    continue
+                except Exception:
+                    pass
+
+                # find all unread single chats not group (span[class="x6s0dn4 xzolkzo x12go9s9 x1rnf11y xprq8jg x9f619 x3nfvp2 xl56j7k x1spa7qu x1kpxq89 xsmyaan"])
+                chat_btns = driver.find_elements(By.CSS_SELECTOR, 'a[href^="/messages/"]')
+                for chat_btn in chat_btns:
+                    #print(chat_btn.text)
+                    try:
+                        chat_btn.find_element(By.CSS_SELECTOR, 'span[class="x6s0dn4 xzolkzo x12go9s9 x1rnf11y xprq8jg x9f619 x3nfvp2 xl56j7k x1spa7qu x1kpxq89 xsmyaan"]')
+                    except Exception:
+                        continue
+
+                    new_chat_coming = True
+                    
+                    driver.execute_script("arguments[0].click();", chat_btn)
+                    time.sleep(2)
+                    
+                    try:
+                        button = driver.find_element(By.CSS_SELECTOR, 'p[class="xat24cr xdj266r"]')
+                        driver.execute_script("arguments[0].click();", button)
+                        button.send_keys(" ")
+                    except Exception:
+                        pass
+                    
+                    try:
+                        profile_btn = driver.find_element(By.CSS_SELECTOR, 'a[class="x1i10hfl x1qjc9v5 xjbqb8w xjqpnuy xa49m3k xqeqjp1 x2hbi6w x13fuv20 xu3j5b3 x1q0q8m5 x26u7qi x972fbf xcfux6l x1qhh985 xm0m39n x9f619 x1ypdohk xdl72j9 xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r x2lwn1j xeuugli xexx8yu x4uap5 x18d9i69 xkhd6sd x1n2onr6 x16tdsg8 x1hl2dhg xggy1nq x1ja2u2z x1t137rt x1o1ewxj x3x9cwd x1e5q0jg x13rtm0m x1q0g3np x87ps6o x1lku1pv x1rg5ohu x1a2a7pz xs83m0k"]')
+                        profile_link = urljoin(driver.current_url, profile_btn.get_attribute("href"))
+
+                        facebook_info = facebook_infos.get(profile_link)
+                        if facebook_info != None:
+                            last_access_ts = facebook_info.get("Last access", 0)
+                            
+                            # Get the current time Unix timestamp minus 3 days (3 days = 3 * 24 * 60 * 60 seconds)
+                            three_days_ago = int(time.time()) - 3 * 24 * 60 * 60
+                            
+                            if last_access_ts < three_days_ago:
+                                facebook_info = None
+
+                        if facebook_info == None:
+                            driver.switch_to.window(profile_tab)
+                            driver.get(profile_link)
+                            print(f"Đang lấy thông tin cá nhân từ {profile_link}")
+                            
+                            wait_for_load(driver)
+                            time.sleep(0.5)
+            
+                            find_who_chatted = driver.find_elements(By.CSS_SELECTOR, 'h1[class^="html-h1 "]')
+                            who_chatted = find_who_chatted[-1].text
+                            
+                            facebook_info = { "Facebook name" : who_chatted, "Facebook url" :  profile_link, "Last access" : int(time.time()) }
+                            
+                            # Loop through the profile sections
+                            for sk in sk_list:
+                                # Build the full URL for the profile section
+                                info_url = urljoin(profile_link, sk)
+                                driver.get(info_url)
+
+                                # Wait for the page to load
+                                wait_for_load(driver)
+                                #time.sleep(0.5)
+
+                                # Find the info elements
+                                info_elements = driver.find_elements(By.CSS_SELECTOR, 'div[class="xyamay9 xqmdsaz x1gan7if x1swvt13"] > div')
+
+                                # Loop through each info element
+                                for info_element in info_elements:
+                                    title = find_and_get_text(info_element, By.CSS_SELECTOR, 'div[class="xieb3on x1gslohp"]')
+                                    if title is not None:
+                                        detail = []
+
+                                        # Append the text lists to the detail array
+                                        detail.extend(find_and_get_list_text(info_element, By.CSS_SELECTOR, 'div[class="x1hq5gj4"]'))
+                                        detail.extend(find_and_get_list_text(info_element, By.CSS_SELECTOR, 'div[class="xat24cr"]'))
+
+                                        # Add title and details to the facebook_info dictionary
+                                        facebook_info[title] = detail
+                            
+                            facebook_infos[profile_link] = facebook_info
+
+                        else:
+                            who_chatted = facebook_info.get("Facebook name")
+                    except Exception as e:
+                        print(e)
+                        continue
+                    facebook_info["Last access"] = int(time.time())
+                    if pickle_to_file(f_facebook_infos, facebook_infos) == False:
+                        print(f"Không thể sao lưu vào {f_facebook_infos}")
+
+                    driver.switch_to.window(chat_tab)
+                    print("Tin nhắn mới từ " + who_chatted)
+                    print(json.dumps(facebook_info, ensure_ascii=False, indent=2))
+
+                    parsed_url = urlparse(driver.current_url)
+
+                    # Remove the trailing slash from the path, if it exists
+                    urlpath = parsed_url.path.rstrip("/")
+                    
+                    # Split the path and extract the ID
+                    path_parts = urlpath.split("/")
+                    message_id = path_parts[-1] if len(path_parts) > 1 else "0"
+
+                    try:
+                        msg_scroller = driver.find_element(By.CSS_SELECTOR, 'div[class="x78zum5 xdt5ytf x1iyjqo2 x6ikm8r x1odjw0f xish69e x16o0dkt"]')
+                        for _x in range(30):
+                            # Convert div to disabled-div to prevent message from disappearing before collection
+                            driver.execute_script("""
+        var divs = document.querySelectorAll('div.x78zum5.xdt5ytf[data-virtualized="false"]');
+        divs.forEach(function(div) {
+            var disabledDiv = document.createElement('disabled-div');
+            disabledDiv.innerHTML = div.innerHTML;  // Keep the content inside
+            div.parentNode.replaceChild(disabledDiv, div);  // Replace the div with the custom tag
+        });
+    """)
+                            driver.execute_script("""
+        var divs = document.querySelectorAll('div.x78zum5.xdt5ytf[data-virtualized="true"]');
+        divs.forEach(function(div) {
+            var disabledDiv = document.createElement('disabled-div'); //
+            disabledDiv.innerHTML = div.innerHTML;  // Keep the content inside
+            div.parentNode.replaceChild(disabledDiv, div);  // Replace the div with the custom tag
+        });
+    """)
+
+                            driver.execute_script("arguments[0].scrollTop = 0;", msg_scroller)
+                            time.sleep(0.1)
+                        driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight;", msg_scroller)
+                    except Exception:
+                        pass
+
+                    time.sleep(1)
+
+                    try:
+                        msg_table = driver.find_element(By.CSS_SELECTOR, 'div[class="x1uipg7g xu3j5b3 xol2nv xlauuyb x26u7qi x19p7ews x78zum5 xdt5ytf x1iyjqo2 x6ikm8r x10wlt62"]')
+                    except Exception:
+                        continue
+                        
+                    try:
+                        msg_elements = msg_table.find_elements(By.CSS_SELECTOR, 'div[role="row"]')
+                    except Exception:
+                        continue
+
+                    js_code = """
+                        const targetDivs = document.querySelectorAll('div[dir="auto"][class^="html-div "]');
+
+                        targetDivs.forEach(div => {
+                          // Replace img elements
+                          const imgs = div.querySelectorAll('img[height="16"][width="16"]');
+                          imgs.forEach(img => {
+                            const span = document.createElement('span');
+                            span.textContent = img.alt || 'No alt content';
+                            img.replaceWith(span);
+                          });
+
+                          // Update span elements with a specific class
+                          const spans = div.querySelectorAll('span[class="html-span xexx8yu x4uap5 x18d9i69 xkhd6sd x1hl2dhg x16tdsg8 x1vvkbs x3nfvp2 x1j61x8r x1fcty0u xdj266r xat24cr xgzva0m xhhsvwb xxymvpz xlup9mm x1kky2od"]');
+                          spans.forEach(span => {
+                            span.setAttribute('class', '');
+                          });
+                        });
+                    """
+
+                    # Execute the JavaScript code
+                    driver.execute_script(js_code)
+
+                    # Get current date and time
+                    current_datetime = datetime.now(pytz.timezone('Asia/Ho_Chi_Minh'))
+
+                    # Format the output
+                    day_and_time = current_datetime.strftime("%A, %d %B %Y - %H:%M:%S")
+                    
+                    prompt_list = []
+                    last_msg = {"message_type" : "none"}
+
+                    header_prompt = get_header_prompt(day_and_time, myname, who_chatted, self_facebook_info, facebook_info)
+
+                    prompt_list.append(f'The Messenger conversation with "{who_chatted}" is as json here:')
+
+                    for msg_element in msg_elements:
+                        try:
+                            timedate = msg_element.find_element(By.CSS_SELECTOR, 'span[class="x193iq5w xeuugli x13faqbe x1vvkbs x1xmvt09 x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x x4zkp8e x676frb x1pg5gke xvq8zen xo1l8bm x12scifz"]')
+                            last_msg = {"message_type" : "conversation_event", "info" : timedate.text}
+                            prompt_list.append(json.dumps(last_msg, ensure_ascii=False))
+                        except Exception:
+                            pass
+
+                        try:
+                            quotes_text = msg_element.find_element(By.CSS_SELECTOR, 'div[class="xi81zsa x126k92a"]').text
+                        except Exception:
+                            quotes_text = None
+
+                        # Finding name
+                        try: 
+                            msg_element.find_element(By.CSS_SELECTOR, 'div[class="html-div xexx8yu x4uap5 x18d9i69 xkhd6sd x1gslohp x11i5rnm x12nagc x1mh8g0r x1yc453h x126k92a xyk4ms5"]').text
+                            name = "your message"
+                            mark = "your_text_message"
+                        except Exception:
+                            name = None
+                            mark = "text_message"
+
+                        if name == None:
+                            try: 
+                                name = msg_element.find_element(By.CSS_SELECTOR, 'h4').text
+                                name =  f"{who_chatted} ({name})"
+                            except Exception:
+                                name = None
+                        if name == None:
+                            try: 
+                                name = msg_element.find_element(By.CSS_SELECTOR, 'span[class="html-span xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x1hl2dhg x16tdsg8 x1vvkbs xzpqnlu x1hyvwdk xjm9jq1 x6ikm8r x10wlt62 x10l6tqk x1i1rx1s"]').text
+                                name =  f"{who_chatted} ({name})"
+                            except Exception:
+                                name = None
+                        
+                        msg = None
+                        try:
+                            msg = msg_element.find_element(By.CSS_SELECTOR, 'div[dir="auto"][class^="html-div "]').text
+                        except Exception:
+                            pass
+                        
+                        try:
+                            image_elements = msg_element.find_elements(By.CSS_SELECTOR, 'img[class="xz74otr xmz0i5r x193iq5w"]')
+                            for image_element in image_elements:
+                                try:
+                                    data_uri = image_element.get_attribute("src")
+                                    
+                                    if data_uri.startswith("data:image/jpeg;base64,"):
+                                        # Extract the base64 string (remove the prefix)
+                                        base64_str = data_uri.split(",")[1]
+                                        # Decode the base64 string into binary data
+                                        image_data = base64.b64decode(base64_str)
+                                    else:
+                                        image_data = requests.get(data_uri).content
+
+                                    image_hashcode = md5(image_data).hexdigest()
+                                    image_name = f"files/img-{message_id}-{image_hashcode}"
+                                    # Use BytesIO to create a file-like object for the image
+                                    image_file = BytesIO(image_data)
+                                    try:
+                                        image_upload = genai.get_file(image_name[:40])
+                                    except Exception:
+                                        image_upload = genai.upload_file(path = image_file, mime_type = "image/jpeg", name = image_name[:40])
+                                   
+                                    last_msg = {"message_type" : "image", "info" : {"name" : name, "msg" : "send an image"}, "mentioned_message" : quotes_text}
+                                    prompt_list.append(json.dumps(last_msg, ensure_ascii=False))
+                                    prompt_list.append(image_upload)
+                                except Exception:
+                                    pass
+                        except Exception:
+                            pass
+
+                        try:
+                            video_element = msg_element.find_element(By.CSS_SELECTOR, 'video')
+                            video_url = video_element.get_attribute("src")
+                            video_data_base64 = driver.execute_script("""
+                                const blobUrl = arguments[0];
+                                return new Promise((resolve) => {
+                                    fetch(blobUrl)  // Use .href or .src depending on the element
+                                        .then(response => response.blob())
+                                        .then(blob => {
+                                            const reader = new FileReader();
+                                            reader.onloadend = () => resolve(reader.result.split(',')[1]); // Base64 string
+                                            reader.readAsDataURL(blob);
+                                        });
+                                });
+                            """, video_url)
+                            video_data = base64.b64decode(video_data_base64)
+                            video_hashcode = md5(video_data).hexdigest()
+                            video_name = f"files/video-{message_id}-{video_hashcode}"
+                            video_file = BytesIO(video_data)
+                            try:
+                                video_upload = genai.get_file(video_name[:40])
+                            except Exception:
+                                video_upload = genai.upload_file(path = video_file, mime_type = "video/mp4", name = video_name[:40])
+
+                            last_msg = {"message_type" : "video", "info" : {"name" : name, "msg" : "send a video"}, "mentioned_message" : quotes_text}
+                            prompt_list.append(json.dumps(last_msg, ensure_ascii=False))
+                            prompt_list.append(video_upload)
+                        except Exception:
+                            pass
+
+                        try: 
+                            react_elements = msg_element.find_elements(By.CSS_SELECTOR, 'img[height="32"][width="32"]')
+                            emojis = ""
+                            if msg == None and len(react_elements) > 0:
+                                for react_element in react_elements:
+                                    emojis += react_element.get_attribute("alt")
+                                msg = emojis
+                        except Exception:
+                            pass
+
+                        if msg == None:
+                            try:
+                                msg_element.find_element(By.CSS_SELECTOR, 'div[aria-label="Like, thumbs up"]')
+                                msg = "👍"
+                            except Exception:
+                                msg = None
+
+                        if msg == None:
+                            continue
+                        if name == None:
+                            name = "None"
+                        
+                        last_msg = {"message_type" : mark, "info" : {"name" : name, "msg" : msg}, "mentioned_message" : quotes_text }
+                        final_last_msg = copy.deepcopy(last_msg)
+                        if is_cmd(msg):
+                            final_last_msg["info"]["msg"] = "<This is command message. It has been hidden>"
+                        prompt_list.append(json.dumps(final_last_msg, ensure_ascii=False))
+
+                        try: 
+                            react_elements = msg_element.find_elements(By.CSS_SELECTOR, 'img[height="16"][width="16"]')
+                            emojis = ""
+                            if len(react_elements) > 0:
+                                for react_element in react_elements:
+                                    emojis += react_element.get_attribute("alt")
+                                emoji_info = f"The above message was reacted with following emojis: {emojis}"
+                                
+                                last_msg = {"message_type" : "reactions", "info" : emoji_info}
+                                prompt_list.append(json.dumps(last_msg, ensure_ascii=False))
+                                
+                        except Exception:
+                            pass
+
+
+                    for prompt in prompt_list:
+                        print(prompt)
+
+                    if last_msg["message_type"] == "your_text_message" or last_msg["message_type"] == "reactions" or last_msg["message_type"] == "conversation_event":
+                        continue
+                    is_command_msg = last_msg["message_type"] == "text_message" and is_cmd(last_msg["info"]["msg"])
+                        
+              
+                    prompt_list.insert(0, header_prompt)
+                    prompt_list.append(f"""
+
+RULES TO CHAT: 
+{rules_prompt}
+
+>> TYPE YOUR MESSAGE TO REPLY""")
+                    
+
+                    for _x in range(10):
+                        try:
+                            button = driver.find_element(By.CSS_SELECTOR, 'p[class="xat24cr xdj266r"]')
+                            driver.execute_script("arguments[0].click();", button)
+                            button.send_keys(" ")
+                            if is_command_msg:
+                                caption = parse_and_execute(last_msg["info"]["msg"])
+                            else:
+                                caption = model.generate_content(prompt_list).text
+                                time.sleep(2)
+                            button.send_keys(Keys.CONTROL + "a")  # Select all text
+                            button.send_keys(Keys.DELETE)  # Delete the selected text
+                            time.sleep(0.5)
+                            button.send_keys(remove_non_bmp_characters(replace_emoji_with_shortcut(caption) + "\n"))
+
+                            print("AI Trả lời:", caption)
+                            time.sleep(2)
+
+                            break
+                        except Exception as e:
+                            print("Thử lại:", _x + 1)
+                            print(e)
+                            time.sleep(2)
+                            continue
+                    
+                if new_chat_coming:
+                    driver.get("https://www.facebook.com/messages/t/156025504001094")
+        except Exception as e:
+            print(e)
+
+finally:
+    driver.quit()
+    
