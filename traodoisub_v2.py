@@ -19,6 +19,7 @@ from fbparser import get_facebook_id
 from pickle_utils import *
 from github_utils import get_file, upload_file
 from cryptography.fernet import Fernet
+import random
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -382,6 +383,15 @@ try:
                 time.sleep(s_delay)   
         
         return 0
+
+    # Convert items to a list and shuffle
+    items = list(driver_list.items())
+    random.shuffle(items)
+
+    # Create a new shuffled dictionary
+    driver_list = dict(items)
+
+    print(list(driver_list.keys()))
     
     for _n in range(loop_count):
         for fb_id, driver in driver_list.items():
