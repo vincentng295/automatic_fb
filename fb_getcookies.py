@@ -18,6 +18,11 @@ def generate_otp(secret_key):
     totp = pyotp.TOTP(secret_key)
     return totp.now()
 
+def base_url_with_path(url):
+    parsed_url = urlparse(url)
+    return parsed_url.netloc + parsed_url.path.rstrip("/")
+    
+
 def __chrome_driver__(scoped_dir = None):
     # Set Chrome options
     chrome_options = Options()
@@ -65,9 +70,8 @@ def check_cookies_(cookies):
             lambda d: d.execute_script("return document.readyState") == "complete"
         )
         time.sleep(3)
-        parsed_url = urlparse(driver.current_url)
-        base_url_with_path = parsed_url.netloc + parsed_url.path.rstrip("/")
-        if base_url_with_path == "www.facebook.com" or base_url_with_path == "www.facebook.com/login":
+        _url = base_url_with_path(driver.current_url)
+        if _url == "www.facebook.com" or _url == "www.facebook.com/login" or _url.startswith("www.facebook.com/checkpoint/"):
             driver.delete_all_cookies()
             return None
         cookies = driver.get_cookies()
@@ -136,14 +140,25 @@ def get_fb_cookies(username, password, otp_secret = None, alt_account = 0, final
             (By.CSS_SELECTOR, 'button[type="submit"]')
         ])
         actions.move_to_element(button).click().perform()
+        print(f"{username}: Đang đăng nhập...")
         wait.until(
             lambda d: d.execute_script("return document.readyState") == "complete"
         )
         time.sleep(5)
-        parsed_url = urlparse(driver.current_url)
-        base_url_with_path = parsed_url.netloc + parsed_url.path.rstrip("/")
-        
-        if base_url_with_path.startswith("www.facebook.com/two_step_verification/"):
+
+        _url = base_url_with_path(driver.current_url)
+        print(_url)
+        if _url.startswith("www.facebook.com/two_step_verification/"):
+            print(f"{username}: Xác minh đăng nhập thủ công trong vòng 20 giây")
+            for i in range(20):
+                _url = base_url_with_path(driver.current_url)
+                if _url.startswith("www.facebook.com/two_step_verification/"):
+                    time.sleep(1)
+                else:
+                    break
+
+        if _url.startswith("www.facebook.com/two_step_verification/"):
+            print(f"{username}: Xác minh đăng nhập 2 bước tự động với OTP")
             other_veri_btn = find_element_when_clickable_in_list([
                 (By.CSS_SELECTOR, 'div[class="x1i10hfl xjbqb8w x1ejq31n xd10rxx x1sy0etr x17r0tee x972fbf xcfux6l x1qhh985 xm0m39n x1ypdohk xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1o1ewxj x3x9cwd x1e5q0jg x13rtm0m x87ps6o x1lku1pv x1a2a7pz x9f619 x3nfvp2 xdt5ytf xl56j7k x1n2onr6 xh8yej3"]'),
                 (By.XPATH, '//span[contains(text(), "Thử cách khác")]'),
@@ -179,14 +194,14 @@ def get_fb_cookies(username, password, otp_secret = None, alt_account = 0, final
             lambda d: d.execute_script("return document.readyState") == "complete"
         )
         time.sleep(5)
-        parsed_url = urlparse(driver.current_url)
-        base_url_with_path = parsed_url.netloc + parsed_url.path.rstrip("/")
-        
-        if base_url_with_path == "www.facebook.com/two_factor/remember_browser":
+        _url = base_url_with_path(driver.current_url)
+        print(_url)
+        if _url == "www.facebook.com/two_factor/remember_browser":
             button = find_element_when_clickable_in_list([
                 (By.CSS_SELECTOR, 'div[class="x1ja2u2z x78zum5 x2lah0s x1n2onr6 xl56j7k x6s0dn4 xozqiw3 x1q0g3np x972fbf xcfux6l x1qhh985 xm0m39n x9f619 xtvsq51 xi112ho x17zwfj4 x585lrc x1403ito x1fq8qgq x1ghtduv x1oktzhs"]')
             ])
             if button != None:
+                print(f"{username}: Ghi nhớ trình duyệt")
                 actions.move_to_element(button).click().perform()
                 time.sleep(5)
 
@@ -213,15 +228,14 @@ def get_fb_cookies(username, password, otp_secret = None, alt_account = 0, final
             lambda d: d.execute_script("return document.readyState") == "complete"
         )
         time.sleep(3)
-        parsed_url = urlparse(driver.current_url)
-        base_url_with_path = parsed_url.netloc + parsed_url.path.rstrip("/")
-        if base_url_with_path == "www.facebook.com" or base_url_with_path == "www.facebook.com/login":
-            raise Exception("Lỗi đăng nhập")
+        _url = base_url_with_path(driver.current_url)
+        if _url == "www.facebook.com" or _url == "www.facebook.com/login" or _url.startswith("www.facebook.com/checkpoint/"):
+            raise Exception(f"Đăng nhập thất bại [{_url}]")
 
         if finally_stop:
             input("Press Enter to extract the cookies")
         cookies = driver.get_cookies()
-        print("Đăng nhập thành công:", driver.current_url)
+        print(f"{username}: Đăng nhập thành công [{driver.current_url}]")
     except Exception as e:
         print(f"Error: {e}")
         return None
