@@ -14,7 +14,7 @@ import urllib
 import time
 import os
 import sys
-from fb_getcookies import get_fb_cookies, check_cookies_
+from fb_getcookies import get_fb_cookies, check_cookies_, __chrome_driver__
 from fbparser import get_facebook_id
 from pickle_utils import *
 from github_utils import get_file, upload_file
@@ -122,24 +122,6 @@ else:
         print(e)
 
 try:
-    # Set Chrome options
-    chrome_options = Options()
-    prefs = {
-        "profile.default_content_setting_values.notifications": 1  # 1 allows notifications, 2 blocks
-    }
-    chrome_options.add_experimental_option("prefs", prefs)
-    chrome_options.add_argument("--headless=new")  # Enable advanced headless mode
-    chrome_options.add_argument("--disable-gpu")   # Disable GPU acceleration for compatibility
-    chrome_options.add_argument(f"window-size={1920*2},{1080*2}")  # Set custom window size
-    chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-    chrome_options.add_argument('--no-sandbox') 
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])  
-    chrome_options.add_experimental_option('useAutomationExtension', False)
-    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    chrome_options.add_argument("disable-infobars")
-    chrome_options.add_argument("--force-device-scale-factor=0.5")
-    
     try:
         f = open(filename, "r")
     except FileNotFoundError:
@@ -166,7 +148,7 @@ try:
         time.sleep(10)
         print("Thiết lập chạy auto Facebook")
         for info in login_list:
-            driver = webdriver.Chrome(options=chrome_options)
+            driver = __chrome_driver__(scoped_dir)
             driver.get("https://www.facebook.com")
             if type(info.get('cookies')) == list:
                 for cookie in info['cookies']:

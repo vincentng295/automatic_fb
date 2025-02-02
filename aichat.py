@@ -25,6 +25,7 @@ import shlex
 import copy
 from pickle_utils import pickle_from_file, pickle_to_file
 from github_utils import upload_file, get_file
+from fb_getcookies import __chrome_driver__
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -213,29 +214,8 @@ def parse_and_execute(command):
         return f"Unknown command: {arg1}"
 
 try:
-    # Set Chrome options
-    chrome_options = Options()
-    prefs = {
-        "profile.default_content_setting_values.popups": 2,  # Block popups
-        "profile.default_content_setting_values.notifications": 1  # 1 allows notifications, 2 blocks
-    }
-    chrome_options.add_experimental_option("prefs", prefs)
-    #chrome_options.add_argument("--headless=new")  # Enable advanced headless mode
-    chrome_options.add_argument("--disable-gpu")   # Disable GPU acceleration for compatibility
-    chrome_options.add_argument(f"window-size={1920*2},{1080*2}")  # Set custom window size
-    chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-    chrome_options.add_argument('--no-sandbox') 
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])  
-    chrome_options.add_experimental_option('useAutomationExtension', False)
-    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    chrome_options.add_argument("disable-infobars")
-    chrome_options.add_argument("--force-device-scale-factor=0.25")
-    if scoped_dir != None and scoped_dir != "":
-        chrome_options.add_argument(f"--user-data-dir={scoped_dir}")
-
     # Initialize the driver
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = __chrome_driver__(scoped_dir)
     actions = ActionChains(driver)
 
     tz_params = {'timezoneId': 'Asia/Ho_Chi_Minh'}

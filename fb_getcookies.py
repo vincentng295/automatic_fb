@@ -21,7 +21,12 @@ def generate_otp(secret_key):
 def base_url_with_path(url):
     parsed_url = urlparse(url)
     return parsed_url.netloc + parsed_url.path.rstrip("/")
-    
+
+def human_typing(element, text):
+    for char in text:
+        element.send_keys(char)
+        # Random delay to emulate human typing speed
+        time.sleep(random.uniform(0.1, 0.25))  # Between 100ms to 250ms
 
 def __chrome_driver__(scoped_dir = None):
     # Set Chrome options
@@ -38,13 +43,17 @@ def __chrome_driver__(scoped_dir = None):
     chrome_options.add_argument('--no-sandbox') 
     chrome_options.add_argument('--disable-dev-shm-usage')
     chrome_options.add_argument('--lang=en')
+    chrome_options.add_argument("--disable-extensions")
     chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])  
     chrome_options.add_experimental_option('useAutomationExtension', False)
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_argument("disable-infobars")
     if scoped_dir != None and scoped_dir != "":
         chrome_options.add_argument(f"--user-data-dir={scoped_dir}")
-    return webdriver.Chrome(options=chrome_options)
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.get("data:text/html, <html><body>Empty Page</body></html>")
+    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    return driver
 
 
 def check_cookies_(cookies):
@@ -101,8 +110,6 @@ def get_fb_cookies(username, password, otp_secret = None, alt_account = 0, final
         scoped_dir = os.getenv("SCPDIR")
         driver = __chrome_driver__(scoped_dir)
 
-        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-
         actions = ActionChains(driver)
         
         wait = WebDriverWait(driver, 20)
@@ -128,13 +135,13 @@ def get_fb_cookies(username, password, otp_secret = None, alt_account = 0, final
         email_input = find_element_when_clickable(By.NAME, "email")
         password_input = find_element_when_clickable(By.NAME, "pass")
         actions.move_to_element(email_input).click().perform()
-        time.sleep(random.randint(3,6))
-        actions.move_to_element(email_input).send_keys(username).perform()
+        time.sleep(random.randint(5,10))
+        human_typing(email_input, username)
         actions.move_to_element(password_input).click().perform()
-        time.sleep(random.randint(3,6))
-        actions.move_to_element(password_input).send_keys(password).perform()
+        time.sleep(random.randint(5,10))
+        human_typing(password_input, password)
         
-        time.sleep(random.randint(3,6))
+        time.sleep(random.randint(5,10))
         button = find_element_when_clickable_in_list([
             (By.CSS_SELECTOR, 'button[id="loginbutton"]'),
             (By.CSS_SELECTOR, 'button[type="submit"]')
@@ -231,7 +238,7 @@ def get_fb_cookies(username, password, otp_secret = None, alt_account = 0, final
             raise Exception(f"Đăng nhập thất bại [{_url}]")
 
         if finally_stop:
-            input("Press Enter to extract the cookies")
+            input("<< Nhấn Enter để tiếp tục >>")
         cookies = driver.get_cookies()
         print(f"{username}: Đăng nhập thành công [{driver.current_url}]")
     except Exception as e:
