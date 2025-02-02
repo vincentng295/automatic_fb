@@ -30,7 +30,6 @@ from fb_getcookies import __chrome_driver__
 sys.stdout.reconfigure(encoding='utf-8')
 
 genai_key = os.getenv("GENKEY")
-ai_prompt = os.getenv("AI_PROMPT")
 scoped_dir = os.getenv("SCPDIR")
 work_jobs = [job for job in os.getenv("WORKJOBS", "aichat,friends").split(",") if job]
 
@@ -41,8 +40,7 @@ STORAGE_BRANCE = os.getenv("STORAGE_BRANCE")
 f_intro_txt = "setup/introduction.txt"
 f_rules_txt = "setup/rules.txt"
 
-if ai_prompt == None or ai_prompt == "":
-    f = open(f_intro_txt, "r", encoding='utf-8') # What kind of person will AI simulate?
+with open(f_intro_txt, "r", encoding='utf-8') as f: # What kind of person will AI simulate?
     ai_prompt = f.read()
 
 def get_header_prompt(day_and_time, myname, who_chatted, self_facebook_info, facebook_info):
@@ -60,8 +58,8 @@ Here is json information about "{who_chatted}":
 """
 
 try:
-    f = open(f_rules_txt, "r", encoding='utf-8') # How AI Responds
-    rules_prompt = f.read()
+    with open(f_rules_txt, "r", encoding='utf-8') as f: # How AI Responds
+        rules_prompt = f.read()
 except Exception:
     rules_prompt = """
 - Reply naturally and creatively, as if you were a real person.
