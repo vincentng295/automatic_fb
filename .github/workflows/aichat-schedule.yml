@@ -75,7 +75,7 @@ jobs:
 
       # Wait for other runs to finish
       - name: Wait for other runs to finish
-        if: ${{ github.event_name == 'schedule' || inputs.check_only != 'true' }}
+        if: ${{ github.event_name == 'schedule' || inputs.check_only != true }}
         run: |
           python wait_for_other_runs.py
         env:
