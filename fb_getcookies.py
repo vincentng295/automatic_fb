@@ -28,6 +28,17 @@ def human_typing(element, text):
         # Random delay to emulate human typing speed
         time.sleep(random.uniform(0.1, 0.25))  # Between 100ms to 250ms
 
+def parse_cookies(cookies_text):
+    """
+    Parse a cookies string in the format "name1=value1;name2=value2;..."
+    and return a list of dictionaries suitable for `add_cookie`.
+    """
+    cookies = []
+    for cookie_pair in cookies_text.split(';'):
+        name, value = cookie_pair.strip().split('=', 1)
+        cookies.append({'name': name, 'value': value})
+    return cookies
+
 def __chrome_driver__(scoped_dir = None):
     # Set Chrome options
     chrome_options = Options()
@@ -148,6 +159,7 @@ def get_fb_cookies(username, password, otp_secret = None, alt_account = 0, final
         ])
         actions.move_to_element(button).click().perform()
         print(f"{username}: Đang đăng nhập...")
+        time.sleep(1)
         wait.until(
             lambda d: d.execute_script("return document.readyState") == "complete"
         )

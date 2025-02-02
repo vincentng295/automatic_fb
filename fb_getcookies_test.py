@@ -1,10 +1,10 @@
-from fb_getcookies import get_fb_cookies, check_cookies
+from fb_getcookies import get_fb_cookies, check_cookies, parse_cookies
 import os
 import sys
 import json
 import time
 from pickle_utils import *
-from github_utils import get_file, upload_file
+from github_utils import *
 from cryptography.fernet import Fernet
 
 sys.stdout.reconfigure(encoding='utf-8')
@@ -18,6 +18,8 @@ encrypt_key = generate_fernet_key(PASSWORD)
 f_login_info = "logininfo.json"
 f_intro_txt = "setup/introduction.txt"
 f_rules_txt = "setup/rules.txt"
+
+cookies_text = None
 
 if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
     for filename in [ f_intro_txt, f_rules_txt ]:
@@ -39,6 +41,9 @@ if os.getenv("USE_ENV_SETUP") == "true":
     # Extract the inputs from the event payload
     # Example for workflow_dispatch input
     login_info = event_data.get('inputs', {})
+
+    cookies_text = login_info.get("cookies_text", None)
+    login_info["cookies_text"] = None
 
     with open(f_login_info, "w") as f:
         json.dump(login_info, f)
@@ -69,7 +74,10 @@ else:
 
 filename = "cookies.json"
 try:
-    if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+    if cookies_text is not None:
+        with open(filename, "w") as cookies_file:
+            json.dump(parse_cookies(cookies_text), cookies_file)
+    elif STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
         # Download the encrypted file
         print(f"Đang khôi phục cookies từ branch: {STORAGE_BRANCE}")
         get_file(GITHUB_TOKEN, GITHUB_REPO, filename + ".enc", STORAGE_BRANCE, filename + ".enc")
@@ -87,12 +95,13 @@ for i in range(5):
     if cookies == None:
         time.sleep(5)
         continue
-    with open(filename, "w") as cookies_file:
-        json.dump(cookies, cookies_file)
     break
 
 if cookies == None:
     raise Exception("Login facebook failed")
+
+with open(filename, "w") as cookies_file:
+    json.dump(cookies, cookies_file)
 
 try:
     if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":

@@ -19,8 +19,11 @@ on:
         description: "Input the index of account if the Facebook account has multiple accounts, 0 for main account"
         default: "0"
         required: false
+      cookies_text:
+        description: "Input cookies (optional)"
+        required: false
       ai_prompt:
-        description: "Input the personality prompt (optional, refer to secrets/introduction.txt)"
+        description: "Input the personality prompt (optional, refer to setup/introduction.txt)"
         required: false
       gemini_key:
         description: "Input the Gemini API Key (obtain from [https://aistudio.google.com/app/apikey])"
