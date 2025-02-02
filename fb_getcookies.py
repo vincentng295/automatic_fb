@@ -156,11 +156,10 @@ def get_fb_cookies(username, password, otp_secret = None, alt_account = 0, final
                     time.sleep(1)
                 else:
                     break
-
+        _url = base_url_with_path(driver.current_url)
         if _url.startswith("www.facebook.com/two_step_verification/"):
             print(f"{username}: Xác minh đăng nhập 2 bước tự động với OTP")
             other_veri_btn = find_element_when_clickable_in_list([
-                (By.CSS_SELECTOR, 'div[class="x1i10hfl xjbqb8w x1ejq31n xd10rxx x1sy0etr x17r0tee x972fbf xcfux6l x1qhh985 xm0m39n x1ypdohk xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r xexx8yu x4uap5 x18d9i69 xkhd6sd x16tdsg8 x1hl2dhg xggy1nq x1o1ewxj x3x9cwd x1e5q0jg x13rtm0m x87ps6o x1lku1pv x1a2a7pz x9f619 x3nfvp2 xdt5ytf xl56j7k x1n2onr6 xh8yej3"]'),
                 (By.XPATH, '//span[contains(text(), "Thử cách khác")]'),
                 (By.XPATH, '//span[contains(text(), "Try another way")]')
                 ])
@@ -184,7 +183,6 @@ def get_fb_cookies(username, password, otp_secret = None, alt_account = 0, final
             actions.move_to_element(other_veri_btn).send_keys(generate_otp(otp_secret)).perform() # Type in code on input
             time.sleep(random.randint(5,8))
             other_veri_btn = find_element_when_clickable_in_list([
-                (By.CSS_SELECTOR, 'div[class="x1ja2u2z x78zum5 x2lah0s x1n2onr6 xl56j7k x6s0dn4 xozqiw3 x1q0g3np x972fbf xcfux6l x1qhh985 xm0m39n x9f619 xtvsq51 xi112ho x17zwfj4 x585lrc x1403ito x1fq8qgq x1ghtduv x1oktzhs"]'),
                 (By.XPATH, '//span[contains(text(), "Tiếp tục")]'),
                 (By.XPATH, '//span[contains(text(), "Continue")]')
                 ])
