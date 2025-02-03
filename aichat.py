@@ -213,7 +213,7 @@ def parse_and_execute(command):
 
 try:
     # Initialize the driver
-    driver = __chrome_driver__(scoped_dir)
+    driver = __chrome_driver__(scoped_dir, False)
     actions = ActionChains(driver)
 
     tz_params = {'timezoneId': 'Asia/Ho_Chi_Minh'}

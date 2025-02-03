@@ -148,7 +148,7 @@ try:
         time.sleep(10)
         print("Thiết lập chạy auto Facebook")
         for info in login_list:
-            driver = __chrome_driver__(None)
+            driver = __chrome_driver__(None, False)
             driver.get("https://www.facebook.com")
             if type(info.get('cookies')) == list:
                 for cookie in info['cookies']:

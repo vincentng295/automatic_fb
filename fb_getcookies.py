@@ -39,7 +39,7 @@ def parse_cookies(cookies_text):
         cookies.append({'name': name, 'value': value})
     return cookies
 
-def __chrome_driver__(scoped_dir = None):
+def __chrome_driver__(scoped_dir = None, headless = True):
     # Set Chrome options
     chrome_options = Options()
     prefs = {
@@ -47,7 +47,8 @@ def __chrome_driver__(scoped_dir = None):
         "profile.default_content_setting_values.notifications": 1  # 1 allows notifications, 2 blocks
     }
     chrome_options.add_experimental_option("prefs", prefs)
-    chrome_options.add_argument("--headless=new")  # Enable advanced headless mode
+    if headless:
+        chrome_options.add_argument("--headless=new")  # Enable advanced headless mode
     chrome_options.add_argument("--disable-gpu")   # Disable GPU acceleration for compatibility
     chrome_options.add_argument("window-size=1920,1080")  # Set custom window size
     chrome_options.add_argument('--disable-blink-features=AutomationControlled')
@@ -72,7 +73,7 @@ def check_cookies_(cookies):
         return None
     try:
         scoped_dir = os.getenv("SCPDIR")
-        driver = __chrome_driver__(scoped_dir)
+        driver = __chrome_driver__(scoped_dir, False)
 
         driver.execute_cdp_cmd("Emulation.setScriptExecutionDisabled", {"value": True})
         driver.get("https://www.facebook.com")
@@ -119,7 +120,7 @@ def get_fb_cookies(username, password, otp_secret = None, alt_account = 0, final
     cookies = None
     try:
         scoped_dir = os.getenv("SCPDIR")
-        driver = __chrome_driver__(scoped_dir)
+        driver = __chrome_driver__(scoped_dir, False)
 
         actions = ActionChains(driver)
         
