@@ -360,14 +360,14 @@ try:
                     for button in driver.find_elements(By.CSS_SELECTOR, 'div[aria-label="Xác nhận"]'):
                         print("Chấp nhận kết bạn")
                         driver.execute_script("arguments[0].click();", button)
-                        time.sleep(0.5)
+                        time.sleep(1)
                 except Exception:
                     pass
                 try:
                     for button in driver.find_elements(By.CSS_SELECTOR, 'div[aria-label="Xóa"]'):
                         print("Xóa kết bạn")
                         driver.execute_script("arguments[0].click();", button)
-                        time.sleep(0.5)
+                        time.sleep(1)
                 except Exception:
                     pass
 
@@ -406,7 +406,6 @@ try:
 
             if "aichat" in work_jobs:
                 driver.switch_to.window(chat_tab)
-                inject_reload(driver)
                 try:
                     if len(onetimecode) >= 6:
                         otc_input = driver.find_element(By.CSS_SELECTOR, 'input[autocomplete="one-time-code"]')
