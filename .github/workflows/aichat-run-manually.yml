@@ -29,7 +29,7 @@ on:
         description: "Input the Gemini API Key (obtain from [https://aistudio.google.com/app/apikey])"
         required: true
       work_jobs:
-        description: "Job to do? (aichat,friends,autolike)"
+        description: "Job to do? (aichat,friends,autolike,keeponline)"
         required: false
         default: "aichat,friends"
       run_aichat:
@@ -86,4 +86,3 @@ jobs:
         env:
           PYTHONUNBUFFERED: "1"
           GENKEY: ${{ inputs.gemini_key }}
-          WORKJOBS: ${{ inputs.work_jobs || 'aichat,friends' }}

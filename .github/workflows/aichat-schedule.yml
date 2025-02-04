@@ -26,8 +26,12 @@ on:
       cookies_text:
         description: "Input cookies (optional)"
         required: false
+      work_jobs:
+        description: "Job to do? (aichat,friends,autolike,keeponline)"
+        required: false
+        default: "aichat,friends"
       check_only:
-        description: "Check login only, no run AI Chat script"
+        description: "Check login only (save facebook cookies configuration and skip run AI Chat script)"
         default: false
         required: false
         type: boolean

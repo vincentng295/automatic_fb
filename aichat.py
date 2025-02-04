@@ -31,7 +31,6 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 genai_key = os.getenv("GENKEY")
 scoped_dir = os.getenv("SCPDIR")
-work_jobs = [job for job in os.getenv("WORKJOBS", "aichat,friends").split(",") if job]
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN") # Pass GitHub Token
 GITHUB_REPO = os.getenv("GITHUB_REPO")   # Pass the repository (owner/repo)
@@ -241,8 +240,8 @@ try:
     print("Đang tải dữ liệu từ cookies")
     
     try:
-        f = open("cookies.json", "r")
-        cache_fb = json.load(f)
+        with open("cookies.json", "r") as f:
+            cache_fb = json.load(f)
     except Exception:
         cache_fb = json.loads(os.getenv("COOKIES")) #legacy
 
@@ -250,9 +249,13 @@ try:
         with open("logininfo.json", "r") as f:
             login_info = json.load(f)
             onetimecode = login_info.get("onetimecode", "")
+            work_jobs = [job for job in login_info.get("work_jobs", "aichat,friends").split(",") if job]
     except Exception as e:
         onetimecode = ""
+        work_jobs = "aichat,friends"
         print(e)
+
+    print("Danh sách jobs:", work_jobs)
 
     driver.execute_cdp_cmd("Emulation.setScriptExecutionDisabled", {"value": True})
     driver.get("https://www.facebook.com")
@@ -372,8 +375,10 @@ try:
                 except Exception:
                     pass
 
-            if "autolike" in work_jobs:
+            if "autolike" in work_jobs or "keeponline" in work_jobs:
                 driver.switch_to.window(worker_tab)
+            
+            if "autolike" in work_jobs:
                 inject_reload(driver, 30*60*1000)
                 driver.execute_script("""
                     if (typeof window.executeLikes === 'undefined') {
@@ -404,6 +409,8 @@ try:
                         })();
                     }
                 """)
+            elif "keeponline" in work_jobs:
+                inject_reload(driver)
 
             if "aichat" in work_jobs:
                 driver.switch_to.window(chat_tab)
