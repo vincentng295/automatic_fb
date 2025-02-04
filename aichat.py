@@ -258,6 +258,7 @@ try:
     driver.get("https://www.facebook.com")
     driver.delete_all_cookies()
     for cookie in cache_fb:
+        cookie.pop('expiry', None)  # Remove 'expiry' field if it exists
         driver.add_cookie(cookie)
     print("Đã khôi phục cookies")
     driver.execute_cdp_cmd("Emulation.setScriptExecutionDisabled", {"value": False})
