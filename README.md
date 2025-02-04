@@ -27,8 +27,8 @@
 
 ### AI Chatbot trên FB
 
-- Lần đầu tiên, bạn cần chạy workflow `Configure Facebook account for schedule AI Chat runs` để nó đăng nhập Facebook và tạo hai tệp `logininfo.json` và `cookies.json`. Những tệp này sẽ được mã hóa bằng biến secret `PASSWORD` mà bạn đã thiết lập. Sau đó, nó sẽ được lưu trữ trong nhánh `caches/schedule` của repo.
-- Khi thay đổi tài khoản Facebook, hãy xóa nhánh `cache/schedule` rồi chạy lại workflow `Configure Facebook account for schedule AI Chat runs`
+- Lần đầu tiên, bạn cần chạy workflow `Run AI Chat on Messenger Account` để đăng nhập Facebook và sao lưu vào nhánh `caches/schedule`.
+- Khi thay đổi tài khoản Facebook, hãy xóa nhánh `cache/schedule` rồi chạy lại workflow `Run AI Chat on Messenger Account`
 
 ---
 
