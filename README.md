@@ -27,7 +27,8 @@
 
 ### AI Chatbot trên FB
 
-- Lần đầu tiên, bạn cần chạy workflow `Run AI Chat on Messenger Account` để đăng nhập Facebook và sao lưu vào nhánh `caches/schedule`.
+- Lần đầu tiên, bạn cần chạy workflow `Run AI Chat on Messenger Account` để đăng nhập Facebook và sao lưu cookies vào nhánh `caches/schedule`.
+- Cookies và các file liên quan sẽ được mã hóa bằng mật khẩu của bạn (`PASSWORD` secret) để không ai có thể truy cập tài khoản Facebook của bạn thông qua việc sử dụng cookies.
 - Khi thay đổi tài khoản Facebook, hãy xóa nhánh `cache/schedule` rồi chạy lại workflow `Run AI Chat on Messenger Account`
 
 ---
