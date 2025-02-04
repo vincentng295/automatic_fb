@@ -16,7 +16,6 @@ on:
         required: false
       onetimecode:
         description: "Input one-time code to decrypt p2p chat (optional)"
-        default: "000000"
         required: false
         type: number
       alt_account:

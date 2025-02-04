@@ -249,9 +249,9 @@ try:
     try:
         with open("logininfo.json", "r") as f:
             login_info = json.load(f)
-            onetimecode = login_info["onetimecode"]
+            onetimecode = login_info.get("onetimecode", "")
     except Exception as e:
-        onetimecode = "000000"
+        onetimecode = ""
         print(e)
 
     driver.execute_cdp_cmd("Emulation.setScriptExecutionDisabled", {"value": True})
@@ -408,17 +408,22 @@ try:
                 driver.switch_to.window(chat_tab)
                 inject_reload(driver)
                 try:
-                    otc_input = driver.find_element(By.CSS_SELECTOR, 'input[autocomplete="one-time-code"]')
-                    driver.execute_script("arguments[0].setAttribute('class', '');", otc_input)
-                    print("Giải mã đoạn chat được mã hóa...")
-                    actions.move_to_element(otc_input).click().perform()
-                    time.sleep(2)
-                    for digit in onetimecode:
-                        actions.move_to_element(otc_input).send_keys(digit).perform()  # Send the digit to the input element
-                        time.sleep(1)  # Wait for 1s before sending the next digit
-                    print("Hoàn tất giải mã!")
-                    time.sleep(5)
-                    continue
+                    if len(onetimecode) >= 6:
+                        otc_input = driver.find_element(By.CSS_SELECTOR, 'input[autocomplete="one-time-code"]')
+                        driver.execute_script("arguments[0].setAttribute('class', '');", otc_input)
+                        print("Giải mã đoạn chat được mã hóa...")
+                        actions.move_to_element(otc_input).click().perform()
+                        time.sleep(2)
+                        for digit in onetimecode:
+                            actions.move_to_element(otc_input).send_keys(digit).perform()  # Send the digit to the input element
+                            time.sleep(1)  # Wait for 1s before sending the next digit
+                        print("Hoàn tất giải mã!")
+                        time.sleep(5)
+                        continue
+                    else:
+                        element = driver.find_element(By.CSS_SELECTOR, '*[class="__fb-light-mode x1n2onr6 x1vjfegm"]')
+                        # Inject style to hide the element
+                        driver.execute_script("arguments[0].style.display = 'none';", element)
                 except Exception:
                     pass
 
