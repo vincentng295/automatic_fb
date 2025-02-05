@@ -25,7 +25,7 @@ import shlex
 import copy
 from pickle_utils import pickle_from_file, pickle_to_file
 from github_utils import upload_file, get_file
-from fb_getcookies import __chrome_driver__
+from fb_getcookies import __chrome_driver__, is_facebook_logged_out
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -344,6 +344,10 @@ try:
 
     while True:
         try:
+            if is_facebook_logged_out(driver.get_cookies()):
+                print("Tài khoản bị đăng xuất")
+                # TODO: obtain new cookies
+                break
             with open("exitnow.txt", "r") as file:
                 content = file.read().strip()  # Read and strip any whitespace/newline
                 if content == "1":

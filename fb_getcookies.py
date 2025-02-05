@@ -81,6 +81,11 @@ def __chrome_driver__(scoped_dir = None, headless = True):
     driver.execute_script("Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]})")
     return driver
 
+def is_facebook_logged_out(cookies):
+    for cookie in cookies:
+        if cookie.get("name", "") == "c_user":
+            return False  # User is logged in if "c_user" cookie is present
+    return True  # User is logged out if "c_user" cookie is not found
 
 def check_cookies_(cookies):
     if cookies == None:
@@ -106,11 +111,11 @@ def check_cookies_(cookies):
             lambda d: d.execute_script("return document.readyState") == "complete"
         )
         time.sleep(3)
+        cookies = driver.get_cookies()
         _url = base_url_with_path(driver.current_url)
-        if _url == "www.facebook.com" or _url == "www.facebook.com/login" or _url.startswith("www.facebook.com/checkpoint/"):
+        if is_facebook_logged_out(cookies):
             driver.delete_all_cookies()
             return None
-        cookies = driver.get_cookies()
         print("Đăng nhập thành công:", driver.current_url)
     except Exception as e:
         print(f"Error: {e}")
@@ -261,13 +266,13 @@ def get_fb_cookies(username, password, otp_secret = None, alt_account = 0, final
             lambda d: d.execute_script("return document.readyState") == "complete"
         )
         time.sleep(3)
-        _url = base_url_with_path(driver.current_url)
-        if _url == "www.facebook.com" or _url == "www.facebook.com/login" or _url.startswith("www.facebook.com/checkpoint/"):
-            raise Exception(f"Đăng nhập thất bại [{_url}]")
 
         if finally_stop:
             input("<< Nhấn Enter để tiếp tục >>")
         cookies = driver.get_cookies()
+        _url = base_url_with_path(driver.current_url)
+        if is_facebook_logged_out(cookies):
+            raise Exception(f"Đăng nhập thất bại [{_url}]")
         print(f"{username}: Đăng nhập thành công [{driver.current_url}]")
     except Exception as e:
         print(f"Error: {e}")
