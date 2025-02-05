@@ -526,6 +526,12 @@ try:
                     driver.switch_to.window(chat_tab)
                     print("Tin nhắn mới từ " + who_chatted)
                     print(json.dumps(facebook_info, ensure_ascii=False, indent=2))
+                    try:
+                        button = driver.find_element(By.CSS_SELECTOR, 'p[class="xat24cr xdj266r"]')
+                        driver.execute_script("arguments[0].click();", button)
+                        button.send_keys(" ")
+                    except Exception:
+                        pass
 
                     parsed_url = urlparse(driver.current_url)
 
@@ -610,6 +616,12 @@ try:
                     header_prompt = get_header_prompt(day_and_time, myname, who_chatted, self_facebook_info, facebook_info)
 
                     prompt_list.append(f'The Messenger conversation with "{who_chatted}" is as json here:')
+                    try:
+                        button = driver.find_element(By.CSS_SELECTOR, 'p[class="xat24cr xdj266r"]')
+                        driver.execute_script("arguments[0].click();", button)
+                        button.send_keys(" ")
+                    except Exception:
+                        pass
 
                     for msg_element in msg_elements:
                         try:
@@ -772,17 +784,17 @@ RULES TO CHAT:
 
 >> TYPE YOUR MESSAGE TO REPLY""")
                     
-
+                    caption = None
                     for _x in range(10):
                         try:
                             button = driver.find_element(By.CSS_SELECTOR, 'p[class="xat24cr xdj266r"]')
                             driver.execute_script("arguments[0].click();", button)
                             button.send_keys(" ")
-                            if is_command_msg:
-                                caption = parse_and_execute(last_msg["info"]["msg"])
-                            else:
-                                caption = model.generate_content(prompt_list).text
-                                time.sleep(2)
+                            if caption == None:
+                                if is_command_msg:
+                                    caption = parse_and_execute(last_msg["info"]["msg"])
+                                else:
+                                    caption = model.generate_content(prompt_list).text
                             button.send_keys(Keys.CONTROL + "a")  # Select all text
                             button.send_keys(Keys.DELETE)  # Delete the selected text
                             time.sleep(0.5)
