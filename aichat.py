@@ -627,7 +627,7 @@ try:
                         # Finding name
                         try: 
                             msg_element.find_element(By.CSS_SELECTOR, 'div[class="html-div xexx8yu x4uap5 x18d9i69 xkhd6sd x1gslohp x11i5rnm x12nagc x1mh8g0r x1yc453h x126k92a xyk4ms5"]').text
-                            name = "your message"
+                            name = myname
                             mark = "your_text_message"
                         except Exception:
                             name = None
@@ -759,7 +759,7 @@ try:
                     for prompt in prompt_list:
                         print(prompt)
 
-                    if last_msg["message_type"] == "your_text_message" or last_msg["message_type"] == "reactions" or last_msg["message_type"] == "conversation_event":
+                    if last_msg["message_type"] == "your_text_message":
                         continue
                     is_command_msg = last_msg["message_type"] == "text_message" and is_cmd(last_msg["info"]["msg"])
                         
