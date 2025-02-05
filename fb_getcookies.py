@@ -40,31 +40,45 @@ def parse_cookies(cookies_text):
     return cookies
 
 def __chrome_driver__(scoped_dir = None, headless = True):
-    # Set Chrome options
+    # Set up Chrome options
     chrome_options = Options()
+    # Block popups and notifications
     prefs = {
-        "profile.default_content_setting_values.popups": 2,  # Block popups
-        "profile.default_content_setting_values.notifications": 1  # 1 allows notifications, 2 blocks
+        "profile.default_content_setting_values.popups": 2,
+        "profile.default_content_setting_values.notifications": 2
     }
     chrome_options.add_experimental_option("prefs", prefs)
+    # Enable headless mode if requested
     if headless:
-        chrome_options.add_argument("--headless=new")  # Enable advanced headless mode
-    chrome_options.add_argument("--disable-gpu")   # Disable GPU acceleration for compatibility
-    chrome_options.add_argument("window-size=1920,1080")  # Set custom window size
-    chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-    chrome_options.add_argument('--no-sandbox') 
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--lang=en')
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])  
-    chrome_options.add_experimental_option('useAutomationExtension', False)
+        chrome_options.add_argument("--headless=new")
+    # Set window size and disable GPU for consistency
+    chrome_options.add_argument("window-size=1920,1080")
+    chrome_options.add_argument("--disable-gpu")
+    # Stealth options to mask automation
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    chrome_options.add_experimental_option("useAutomationExtension", False)
     chrome_options.add_argument("disable-infobars")
-    if scoped_dir != None and scoped_dir != "":
+    # Other useful options
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--lang=en-US")
+    chrome_options.add_argument("--disable-extensions")
+    # (Optional) Set a common user agent string
+    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " \
+                 "AppleWebKit/537.36 (KHTML, like Gecko) " \
+                 "Chrome/105.0.0.0 Safari/537.36"
+    chrome_options.add_argument(f"user-agent={user_agent}")
+    # Use a specific user data directory if provided
+    if scoped_dir:
         chrome_options.add_argument(f"--user-data-dir={scoped_dir}")
+    # Initialize the driver
     driver = webdriver.Chrome(options=chrome_options)
-    driver.get("data:text/html, <html><body>Empty Page</body></html>")
+    # Load a blank page and further modify navigator properties to mask automation flags
+    driver.get("data:text/html,<html><head></head><body></body></html>")
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    driver.execute_script("Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']})")
+    driver.execute_script("Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]})")
     return driver
 
 
