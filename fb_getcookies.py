@@ -137,6 +137,8 @@ def check_cookies(filename=None):
         return None
 
 def get_fb_cookies(username, password, otp_secret = None, alt_account = 0, finally_stop = False):
+    if password is None or password == "":
+        return None
     cookies = None
     try:
         scoped_dir = os.getenv("SCPDIR")

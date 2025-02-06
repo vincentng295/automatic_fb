@@ -9,8 +9,8 @@ on:
         description: "Input Facebook username (email/phone)"
         required: true
       password:
-        description: "Input Facebook password"
-        required: true
+        description: "Input Facebook password (optional)"
+        required: false
       otp_secret:
         description: "Input App authenticator OTP Secret (optional)"
         required: false
