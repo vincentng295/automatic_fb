@@ -603,6 +603,7 @@ try:
 
                     # Execute the JavaScript code
                     driver.execute_script(js_code)
+                    time.sleep(1)
 
                     # Get current date and time
                     current_datetime = datetime.now(pytz.timezone('Asia/Ho_Chi_Minh'))
