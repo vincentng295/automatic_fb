@@ -113,7 +113,7 @@ def check_cookies_(cookies):
         time.sleep(3)
         cookies = driver.get_cookies()
         _url = base_url_with_path(driver.current_url)
-        if is_facebook_logged_out(cookies):
+        if _url == "www.facebook.com" or _url == "www.facebook.com/login" or _url.startswith("www.facebook.com/checkpoint/"):
             driver.delete_all_cookies()
             return None
         print("Đăng nhập thành công:", driver.current_url)
@@ -271,7 +271,7 @@ def get_fb_cookies(username, password, otp_secret = None, alt_account = 0, final
             input("<< Nhấn Enter để tiếp tục >>")
         cookies = driver.get_cookies()
         _url = base_url_with_path(driver.current_url)
-        if is_facebook_logged_out(cookies):
+        if _url == "www.facebook.com" or _url == "www.facebook.com/login" or _url.startswith("www.facebook.com/checkpoint/"):
             raise Exception(f"Đăng nhập thất bại [{_url}]")
         print(f"{username}: Đăng nhập thành công [{driver.current_url}]")
     except Exception as e:
