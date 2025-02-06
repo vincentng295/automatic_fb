@@ -14,7 +14,7 @@ import urllib
 import time
 import os
 import sys
-from fb_getcookies import get_fb_cookies, check_cookies_, __chrome_driver__
+from fb_getcookies import get_fb_cookies, check_cookies_, __chrome_driver__, parse_cookies
 from fbparser import get_facebook_id
 from pickle_utils import *
 from github_utils import get_file, upload_file
@@ -138,8 +138,12 @@ try:
             otp_secret = info["otp_sec"]
             alt_account = info["alt"]
             print(f"Đăng nhập username={username} password=*** otp_secret=*** alt={alt_account}")
-            cookies = check_cookies_(info.get("cookies"))
-            if cookies == None:
+            cookies = info.get("cookies", None)
+            if type(cookies) == str:
+                cookies = parse_cookies(cookies)
+            if type(cookies) == list:
+                cookies = check_cookies_(cookies)
+            if type(cookies) != list:
                 cookies = get_fb_cookies(username, password, otp_secret, int(alt_account))
             if cookies == None:
                 continue
@@ -150,9 +154,13 @@ try:
         for info in login_list:
             driver = __chrome_driver__(None, False)
             driver.get("https://www.facebook.com")
-            if type(info.get('cookies')) == list:
+            if type(info.get('cookies', None)) == list:
                 for cookie in info['cookies']:
                     driver.add_cookie(cookie)
+            else:
+                print("Không có cookies, bỏ qua")
+                quit_nocare(driver)
+                continue
             print("Khôi phục cookies:", info['username'], info.get("alt","0"))
             driver.get("https://www.facebook.com/profile.php")
             wait_for_load(driver)
