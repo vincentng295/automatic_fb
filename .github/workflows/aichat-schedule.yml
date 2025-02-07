@@ -68,13 +68,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Run the login script (generates cookies.json if not found)
-      - name: Login Facebook account
+      # Test selenium
+      - name: Test selenium
         run: |
-          python fb_getcookies_test.py
+          python test_selenium.py
         env:
           PYTHONUNBUFFERED: "1"
-          PASSWORD: ${{ secrets.PASSWORD }} # Decrypt key
 
       # Wait for other runs to finish
       - name: Wait for other runs to finish
@@ -87,6 +86,14 @@ jobs:
           GITHUB_REPO: ${{ github.repository }}     # Pass the repository (owner/repo)
           WORKFLOW_ID: ${{ github.workflow }}       # Pass the workflow ID (name of the workflow)
           CURRENT_RUN_ID: ${{ github.run_id }}      # Pass the current run ID
+
+      # Run the login script (generates cookies.json if not found)
+      - name: Login Facebook account
+        run: |
+          python fb_getcookies_test.py
+        env:
+          PYTHONUNBUFFERED: "1"
+          PASSWORD: ${{ secrets.PASSWORD }} # Decrypt key
 
       # Run AI Chat on Messenger account (schedule)
       - name: Run AI Chat on Messenger account
