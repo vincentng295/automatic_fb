@@ -41,7 +41,7 @@ on:
 jobs:
   run-aichat:
     runs-on: windows-latest
-    timeout-minutes: 250
+    timeout-minutes: 300
     env:
       SCPDIR: ${{ github.workspace }}\scoped_dir
       COOKIESFILE: ${{ github.workspace }}\cookies.json
