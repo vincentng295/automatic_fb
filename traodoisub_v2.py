@@ -152,31 +152,27 @@ try:
         time.sleep(10)
         print("Thiết lập chạy auto Facebook")
         for info in login_list:
-            driver = __chrome_driver__(None, False)
-            driver.get("https://www.facebook.com")
-            if type(info.get('cookies', None)) == list:
+            driver = None
+            try:
+                driver = __chrome_driver__(None, False)
+                driver.get("https://www.facebook.com")
+                if type(info.get('cookies', None)) != list:
+                    raise Exception("Không có cookies, bỏ qua")
                 for cookie in info['cookies']:
                     driver.add_cookie(cookie)
-            else:
-                print("Không có cookies, bỏ qua")
-                quit_nocare(driver)
-                continue
-            print("Khôi phục cookies:", info['username'], info.get("alt","0"))
-            driver.get("https://www.facebook.com/profile.php")
-            wait_for_load(driver)
-            if driver.current_url.startswith("https://www.facebook.com/checkpoint/"):
-                print(f"Acc đã bị die, dính checkpoint")
-                quit_nocare(driver)
-                continue
-            try:
+                print("Khôi phục cookies:", info['username'], info.get("alt","0"))
+                driver.get("https://www.facebook.com/profile.php")
+                wait_for_load(driver)
+                if driver.current_url.startswith("https://www.facebook.com/checkpoint/"):
+                    raise Exception("Acc đã bị die, dính checkpoint")
                 info['fb_id'] = get_facebook_id(driver.current_url)
                 print(f"[{driver.current_url}] ID là {info['fb_id']}")
+                driver_list[info['fb_id']] = driver
+                login_list_tmp.append(info)
             except Exception as e:
                 print(e)
                 quit_nocare(driver)
                 continue
-            driver_list[info['fb_id']] = driver
-            login_list_tmp.append(info)
         f = open(filename, "w")
         login_list = login_list_tmp
         login_list_tmp = None
