@@ -39,7 +39,7 @@ def parse_cookies(cookies_text):
         cookies.append({'name': name, 'value': value})
     return cookies
 
-def __chrome_driver__(scoped_dir = None, headless = True):
+def __chrome_driver__(scoped_dir = None, headless = True, incognito = False):
     # Set up Chrome options
     chrome_options = Options()
     # Block popups and notifications
@@ -51,6 +51,8 @@ def __chrome_driver__(scoped_dir = None, headless = True):
     # Enable headless mode if requested
     if headless:
         chrome_options.add_argument("--headless=new")
+    if incognito:
+        chrome_options.add_argument("--incognito")
     # Set window size and disable GPU for consistency
     chrome_options.add_argument("window-size=1920,1080")
     chrome_options.add_argument("--disable-gpu")
@@ -87,12 +89,12 @@ def is_facebook_logged_out(cookies):
             return False  # User is logged in if "c_user" cookie is present
     return True  # User is logged out if "c_user" cookie is not found
 
-def check_cookies_(cookies):
+def check_cookies_(cookies, incognito = False):
     if cookies == None:
         return None
     try:
         scoped_dir = os.getenv("SCPDIR")
-        driver = __chrome_driver__(scoped_dir, False)
+        driver = __chrome_driver__(scoped_dir, False, incognito)
 
         driver.execute_cdp_cmd("Emulation.setScriptExecutionDisabled", {"value": True})
         driver.get("https://www.facebook.com")
@@ -125,29 +127,41 @@ def check_cookies_(cookies):
     return cookies
 
 
-def check_cookies(filename=None):
+def check_cookies(filename=None, incognito = False):
     try:
         cookies = None
         if filename:
             with open(filename, "r") as f:
                 cookies = json.load(f)
-        return check_cookies_(cookies)
+        return check_cookies_(cookies, incognito), cookies
     except Exception as e:
         print(f"Error loading cookies from file: {e}")
-        return None
+        return None, cookies
 
-def get_fb_cookies(username, password, otp_secret = None, alt_account = 0, finally_stop = False):
+def get_fb_cookies(username, password, otp_secret = None, alt_account = 0, cookies = None, incognito = False, finally_stop = False):
     if password is None or password == "":
         return None
-    cookies = None
     try:
         scoped_dir = os.getenv("SCPDIR")
-        driver = __chrome_driver__(scoped_dir, False)
+        driver = __chrome_driver__(scoped_dir, False, incognito)
 
         actions = ActionChains(driver)
         
         wait = WebDriverWait(driver, 20)
-        
+
+        if type(cookies) == list:
+            driver.execute_cdp_cmd("Emulation.setScriptExecutionDisabled", {"value": True})
+            driver.get("https://www.facebook.com")
+            wait.until(
+                lambda d: d.execute_script("return document.readyState") == "complete"
+            )
+            driver.delete_all_cookies()
+            for cookie in cookies:
+                cookie.pop('expiry', None)  # Remove 'expiry' field if it exists
+                driver.add_cookie(cookie)
+            print("Đã khôi phục cookies")
+            driver.execute_cdp_cmd("Emulation.setScriptExecutionDisabled", {"value": False})
+
         def find_element_when_clickable(by, selector):
             return wait.until(EC.element_to_be_clickable((by, selector)))
         

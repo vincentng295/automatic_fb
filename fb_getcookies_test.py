@@ -92,11 +92,14 @@ try:
 except Exception as e:
     print(e)
 
-cookies = check_cookies(filename)
+cookies, old_cookies = check_cookies(filename, incognito = True)
+
+if cookies == None:
+    cookies = get_fb_cookies(username, password, otp_secret, alt_account, old_cookies, incognito = True)
 
 for i in range(5):
     if cookies == None:
-        cookies = get_fb_cookies(username, password, otp_secret, alt_account)
+        cookies = get_fb_cookies(username, password, otp_secret, alt_account, incognito = True)
     if cookies == None:
         time.sleep(5)
         continue
