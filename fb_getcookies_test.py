@@ -78,6 +78,7 @@ else:
     alt_account = int(alt_account)
 
 filename = "cookies.json"
+
 try:
     if cookies_text is not None:
         with open(filename, "w") as cookies_file:
@@ -93,9 +94,6 @@ except Exception as e:
     print(e)
 
 cookies, old_cookies = check_cookies(filename, incognito = True)
-
-if cookies == None:
-    cookies = get_fb_cookies(username, password, otp_secret, alt_account, old_cookies, incognito = True)
 
 for i in range(5):
     if cookies == None:
