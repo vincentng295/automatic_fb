@@ -78,6 +78,7 @@ else:
     alt_account = int(alt_account)
 
 filename = "cookies.json"
+bakfilename = "cookies_bak.json"
 
 try:
     if cookies_text is not None:
@@ -93,31 +94,64 @@ try:
 except Exception as e:
     print(e)
 
+try:
+    if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+        # Download the encrypted file
+        print(f"Đang khôi phục cookies từ branch: {STORAGE_BRANCE}")
+        get_file(GITHUB_TOKEN, GITHUB_REPO, bakfilename + ".enc", STORAGE_BRANCE, bakfilename + ".enc")
+        print("Đang giải mã tập tin...")
+        decrypt_file(bakfilename + ".enc", bakfilename, encrypt_key)
+        print("Đã giải mã file thành công!")
+except Exception as e:
+    print(e)
+
+print("Kiểm tra cookies")
 cookies, old_cookies = check_cookies(filename, incognito = True)
+print("Kiểm tra cookies dự phòng")
+bakcookies, old_bakcookies = check_cookies(bakfilename, incognito = True)
+
+if cookies == None:
+    print("Cookies đã hết hạn sử dụng, sử dụng cookies dự phòng")
+    cookies = bakcookies
+    bakcookies = None
 
 for i in range(5):
     if cookies == None:
+        print("Đang lấy cookies mới...")
         cookies = get_fb_cookies(username, password, otp_secret, alt_account, incognito = True)
     if cookies == None:
         time.sleep(5)
         continue
     break
-
 if cookies == None:
-    raise Exception("Login facebook failed")
+    raise Exception("Đăng nhập thất bại")
+for i in range(5):
+    if bakcookies == None:
+        print("Đang lấy cookies dự phòng mới...")
+        bakcookies = get_fb_cookies(username, password, otp_secret, alt_account, incognito = True)
+    if bakcookies == None:
+        time.sleep(5)
+        continue
+    break
+
 
 with open(filename, "w") as cookies_file:
     json.dump(cookies, cookies_file)
+
+with open(bakfilename, "w") as bakcookies_file:
+    json.dump(bakcookies, bakcookies_file)
 
 try:
     if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
         # Encrypt file with encrypt key
         print("Đang mã hóa tập tin trước khi tải lên...")
         encrypt_file(filename, filename + ".enc", encrypt_key)
+        encrypt_file(bakfilename, bakfilename + ".enc", encrypt_key)
         encrypt_file(f_login_info, f_login_info + ".enc", encrypt_key)
         print("Mã hóa thành công!")
         # Upload the file onto repo
         upload_file(GITHUB_TOKEN, GITHUB_REPO, filename + ".enc", STORAGE_BRANCE)
+        upload_file(GITHUB_TOKEN, GITHUB_REPO, bakfilename + ".enc", STORAGE_BRANCE)
         upload_file(GITHUB_TOKEN, GITHUB_REPO, f_login_info + ".enc", STORAGE_BRANCE)
         print(f"Đã tải tệp lên branch: {STORAGE_BRANCE}")
 except Exception as e:

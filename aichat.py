@@ -95,7 +95,12 @@ try:
         with open("cookies.json", "r") as f:
             cache_fb = json.load(f)
     except Exception:
-        cache_fb = json.loads(os.getenv("COOKIES")) #legacy
+        cache_fb = []    
+    try:
+        with open("cookies_bak.json", "r") as f:
+            bak_cache_fb = json.load(f)
+    except Exception:
+        bak_cache_fb = None
 
     try:
         with open("logininfo.json", "r") as f:
@@ -177,12 +182,14 @@ try:
     print(json.dumps(self_facebook_info, ensure_ascii=False, indent=2))
     print(ai_prompt)
     
-    driver.switch_to.window(chat_tab)
-    driver.get("https://www.facebook.com/messages/t/156025504001094")
-    driver.switch_to.window(friend_tab)
-    driver.get("https://www.facebook.com/friends")
-    driver.switch_to.window(worker_tab)
-    driver.get("https://www.facebook.com/home.php")
+    def init_fb():
+        driver.switch_to.window(chat_tab)
+        driver.get("https://www.facebook.com/messages/t/156025504001094")
+        driver.switch_to.window(friend_tab)
+        driver.get("https://www.facebook.com/friends")
+        driver.switch_to.window(worker_tab)
+        driver.get("https://www.facebook.com/home.php")
+    init_fb()
 
     f_facebook_infos = "facebook_infos.bin"
     try:
@@ -197,9 +204,20 @@ try:
     while True:
         try:
             if is_facebook_logged_out(driver.get_cookies()):
-                print("Tài khoản bị đăng xuất")
-                # TODO: obtain new cookies
-                break
+                if bak_cache_fb is not None:
+                    print("Tài khoản bị đăng xuất, sử dụng cookies dự phòng")
+                    # TODO: obtain new cookies
+                    driver.delete_all_cookies()
+                    for cookie in bak_cache_fb:
+                        cookie.pop('expiry', None)  # Remove 'expiry' field if it exists
+                        driver.add_cookie(cookie)
+                    bak_cache_fb = None
+                    init_fb()
+                    time.sleep(1)
+                    continue
+                else:
+                    print("Tài khoản bị đăng xuất")
+                    break
             with open("exitnow.txt", "r") as file:
                 content = file.read().strip()  # Read and strip any whitespace/newline
                 if content == "1":
