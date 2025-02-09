@@ -23,7 +23,7 @@ on:
         description: "Input cookies (optional)"
         required: false
       ai_prompt:
-        description: "Input the personality prompt (optional, refer to setup/introduction.txt)"
+        description: "Input the persona introduction for AI instruction (optional, refer to setup/introduction.txt)"
         required: false
       gemini_key:
         description: "Input the Gemini API Key (obtain from [https://aistudio.google.com/app/apikey])"

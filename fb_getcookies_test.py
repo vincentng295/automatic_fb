@@ -58,6 +58,8 @@ ai_prompt = login_info.get("ai_prompt", None)
 if ai_prompt is not None and ai_prompt != "":
     with open(f_intro_txt, "w", encoding='utf-8') as f: # What kind of person will AI simulate?
         f.write(ai_prompt)
+    if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+        upload_file(GITHUB_TOKEN, GITHUB_REPO, f_intro_txt, STORAGE_BRANCE, f_intro_txt)
 
 if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
     for filename in [ f_intro_txt, f_rules_txt ]:

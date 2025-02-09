@@ -26,6 +26,9 @@ on:
       cookies_text:
         description: "Input cookies (optional)"
         required: false
+      ai_prompt:
+        description: "Input the persona introduction for AI instruction (optional, refer to setup/introduction.txt)"
+        required: false
       work_jobs:
         description: "Job to do? (aichat,friends,autolike,keeponline)"
         required: false
