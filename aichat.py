@@ -59,9 +59,6 @@ except Exception:
 cwd = os.getcwd()
 print(cwd)
 
-genai.configure(api_key=genai_key)
-model = genai.GenerativeModel('gemini-1.5-flash')
-
 try:
     # Initialize the driver
     driver = __chrome_driver__(scoped_dir, False)
@@ -178,9 +175,14 @@ try:
         if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
             upload_file(GITHUB_TOKEN, GITHUB_REPO, f_self_facebook_info, STORAGE_BRANCE)
 
-    print(myname)
-    print(json.dumps(self_facebook_info, ensure_ascii=False, indent=2))
-    print(ai_prompt)
+    instruction = get_instructions_prompt(myname, ai_prompt, self_facebook_info, rules_prompt)
+    # Setup persona instruction
+    genai.configure(api_key=genai_key)
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        system_instruction = instruction
+    )
+    print(instruction)
     
     def init_fb():
         driver.switch_to.window(chat_tab)
@@ -484,7 +486,7 @@ try:
                     prompt_list = []
                     last_msg = {"message_type" : "none"}
 
-                    header_prompt = get_header_prompt(day_and_time, myname, ai_prompt, who_chatted, self_facebook_info, facebook_info)
+                    header_prompt = get_header_prompt(day_and_time, who_chatted, facebook_info)
 
                     prompt_list.append(f'The Messenger conversation with "{who_chatted}" is as json here:')
                     try:
@@ -648,12 +650,7 @@ try:
                         
               
                     prompt_list.insert(0, header_prompt)
-                    prompt_list.append(f"""
-
-RULES TO CHAT: 
-{rules_prompt}
-
->> TYPE YOUR MESSAGE TO REPLY""")
+                    prompt_list.append(">> TYPE YOUR MESSAGE TO REPLY")
                     
                     caption = None
                     for _x in range(10):
