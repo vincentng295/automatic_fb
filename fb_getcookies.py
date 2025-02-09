@@ -204,16 +204,19 @@ def get_fb_cookies(username, password, otp_secret = None, alt_account = 0, cooki
 
         _url = base_url_with_path(driver.current_url)
         print(_url)
-        if _url.startswith("www.facebook.com/two_step_verification/"):
+        if  (_url == "www.facebook.com/two_step_verification/two_factor" or 
+            _url == "www.facebook.com/auth_platform/afad"):
             print(f"{username}: Đang chờ Xác minh đăng nhập thủ công. Hãy phê duyệt từ thiết bị khác trong vòng 20 giây...")
             for i in range(20):
                 _url = base_url_with_path(driver.current_url)
-                if _url.startswith("www.facebook.com/two_step_verification/"):
+                if  (_url == "www.facebook.com/two_step_verification/two_factor" or 
+                    _url == "www.facebook.com/auth_platform/afad"):
                     time.sleep(1)
                 else:
                     break
         _url = base_url_with_path(driver.current_url)
-        if _url.startswith("www.facebook.com/two_step_verification/"):
+        if  (_url == "www.facebook.com/two_step_verification/two_factor" or 
+            _url == "www.facebook.com/auth_platform/afad"):
             try:
                 print(f"{username}: Chưa phê duyệt đang nhập. Đang tiến hành Xác minh đăng nhập 2 bước tự động với OTP")
                 other_veri_btn = find_element_when_clickable_in_list([
