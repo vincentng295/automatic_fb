@@ -223,8 +223,6 @@ try:
             with open("exitnow.txt", "r") as file:
                 content = file.read().strip()  # Read and strip any whitespace/newline
                 if content == "1":
-                    if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
-                        upload_file(GITHUB_TOKEN, GITHUB_REPO, f_facebook_infos, STORAGE_BRANCE)
                     break
         except Exception:
             pass # Ignore all errors
@@ -385,15 +383,19 @@ try:
                                         facebook_info[title] = detail
                             
                             facebook_infos[profile_link] = facebook_info
-
                         else:
                             who_chatted = facebook_info.get("Facebook name")
+
+                        last_access_ts = facebook_info.get("Last access", 0)
+                        facebook_info["Last access"] = int(time.time())
+                        if pickle_to_file(f_facebook_infos, facebook_infos) == False:
+                            print(f"Không thể sao lưu vào {f_facebook_infos}")
+                        # First time upload
+                        if last_access_ts == 0 and (STORAGE_BRANCE is not None and STORAGE_BRANCE != ""):
+                            upload_file(GITHUB_TOKEN, GITHUB_REPO, f_facebook_infos, STORAGE_BRANCE)
                     except Exception as e:
                         print(e)
                         continue
-                    facebook_info["Last access"] = int(time.time())
-                    if pickle_to_file(f_facebook_infos, facebook_infos) == False:
-                        print(f"Không thể sao lưu vào {f_facebook_infos}")
 
                     driver.switch_to.window(chat_tab)
                     print("Tin nhắn mới từ " + who_chatted)
@@ -682,7 +684,8 @@ try:
                     driver.get("https://www.facebook.com/messages/t/156025504001094")
         except Exception as e:
             print(e)
-
+    if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+        upload_file(GITHUB_TOKEN, GITHUB_REPO, f_facebook_infos, STORAGE_BRANCE)
 finally:
     driver.quit()
     
