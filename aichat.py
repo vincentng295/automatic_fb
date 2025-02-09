@@ -182,7 +182,8 @@ try:
         model_name="gemini-1.5-flash",
         system_instruction = instruction
     )
-    print(instruction)
+    for text in instruction:
+        print(text)
     
     def init_fb():
         driver.switch_to.window(chat_tab)
