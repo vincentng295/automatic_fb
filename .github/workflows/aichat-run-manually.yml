@@ -29,9 +29,9 @@ on:
         description: "Input the Gemini API Key (obtain from [https://aistudio.google.com/app/apikey])"
         required: true
       work_jobs:
-        description: "Job to do? (aichat,friends,autolike,keeponline)"
+        description: "Type one or more of these options: (aichat[=normal|devmode],friends,autolike,keeponline)"
         required: false
-        default: "aichat,friends"
+        default: "aichat=normal,friends"
       run_aichat:
         description: "Run AI Chat, untick to check login only"
         required: false

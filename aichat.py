@@ -45,9 +45,11 @@ try:
 except Exception:
     rules_prompt = """
 - Reply naturally and creatively, as if you were a real person.
-- Use Vietnamese (preferred) or English depending on the conversation and the name of the person you are talking to.
-- If the person you are talking to is not Vietnamese, you can speak English, or his/her language
+- Reply in Vietnamese or English depending on the conversation and the name of the person you are replying to. If the person you are replying to is not Vietnamese people, you can reply in English, or in their language.
+- Do not switch languages ​​during a conversation unless the other person asks you to. Meaning: If the person you are talking to speaks Vietnamese, please only reply in Vietnamese. If the person you are talking to speaks English, please only reply in English.
 - Do not switch languages ​​during a conversation unless requested by the other person.
+- If you are speaking in Vietnamese, make sure to use appropriate pronouns when knowing the other person's age.
+- Reply to communication messages briefly, unless the context requires detailed information, clarification, or a more personal and thoughtful response.
 - Keep responses concise, relevant, and avoid repetition or robotic tone.
 - Stay focused on the last message in the conversation.
 - Avoid unnecessary explanations or details beyond the reply itself.
@@ -103,10 +105,10 @@ try:
         with open("logininfo.json", "r") as f:
             login_info = json.load(f)
             onetimecode = login_info.get("onetimecode", "")
-            work_jobs = [job for job in login_info.get("work_jobs", "aichat,friends").split(",") if job]
+            work_jobs = parse_opts_string(login_info.get("work_jobs", "aichat,friends"))
     except Exception as e:
         onetimecode = ""
-        work_jobs = "aichat,friends"
+        work_jobs = parse_opts_string("aichat,friends")
         print(e)
 
     print("Danh sách jobs:", work_jobs)
@@ -175,7 +177,8 @@ try:
         if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
             upload_file(GITHUB_TOKEN, GITHUB_REPO, f_self_facebook_info, STORAGE_BRANCE)
 
-    instruction = get_instructions_prompt(myname, ai_prompt, self_facebook_info, rules_prompt)
+    gemini_dev_mode = work_jobs.get("aichat", "normal") == "devmode"
+    instruction = get_instructions_prompt(myname, ai_prompt, self_facebook_info, rules_prompt, gemini_dev_mode)
     # Setup persona instruction
     genai.configure(api_key=genai_key)
     model = genai.GenerativeModel(

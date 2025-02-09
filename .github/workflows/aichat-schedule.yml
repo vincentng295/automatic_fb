@@ -30,9 +30,9 @@ on:
         description: "Input the persona introduction for AI instruction (optional, refer to setup/introduction.txt)"
         required: false
       work_jobs:
-        description: "Job to do? (aichat,friends,autolike,keeponline)"
+        description: "Type one or more of these options: (aichat[=normal|devmode],friends,autolike,keeponline)"
         required: false
-        default: "aichat,friends"
+        default: "aichat=normal,friends"
       check_only:
         description: "Check login only (save facebook cookies configuration and skip run AI Chat script)"
         default: false
