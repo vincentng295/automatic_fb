@@ -711,6 +711,8 @@ try:
 
                             break
                         except Exception as e:
+                            if len(driver.find_elements(By.CSS_SELECTOR, 'div.x1n2onr6.x1ja2u2z.x9f619.x78zum5.xdt5ytf.x2lah0s.x193iq5w.xyamay9.xkh2ocl.x57kliw.x1epquy7.x13fuv20.x178xt8z.x1l90r2v')):
+                                break
                             print("Thử lại:", _x + 1)
                             print(e)
                             time.sleep(2)
