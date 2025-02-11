@@ -21,7 +21,7 @@ from selenium.webdriver.common.keys import Keys  # For keyboard actions
 import google.generativeai as genai  # For generative AI functionalities
 from pickle_utils import pickle_from_file, pickle_to_file  # For pickling data
 from github_utils import upload_file, get_file  # For GitHub file operations
-from fb_getcookies import __chrome_driver__, is_facebook_logged_out  # For Facebook cookie handling
+from fb_getcookies import __chrome_driver__, is_facebook_logged_out, base_url_with_path  # For Facebook cookie handling
 from aichat_utils import *  # For custom utility functions
 
 sys.stdout.reconfigure(encoding='utf-8')
@@ -190,7 +190,7 @@ try:
     
     def init_fb():
         driver.switch_to.window(chat_tab)
-        driver.get("https://www.facebook.com/messages/t/156025504001094")
+        driver.get("https://www.facebook.com/messages/new")
         driver.switch_to.window(friend_tab)
         driver.get("https://www.facebook.com/friends")
         driver.switch_to.window(worker_tab)
@@ -232,10 +232,11 @@ try:
             pass # Ignore all errors
 
         try:
-            new_chat_coming = False
             time.sleep(0.5)
             if "friends" in work_jobs:
                 driver.switch_to.window(friend_tab)
+                if base_url_with_path(driver.current_url) != "www.facebook.com/friends":
+                    driver.get("https://www.facebook.com/friends")
                 inject_reload(driver)
 
                 try:
@@ -292,6 +293,9 @@ try:
 
             if "aichat" in work_jobs:
                 driver.switch_to.window(chat_tab)
+                if base_url_with_path(driver.current_url) != "www.facebook.com/messages/new":
+                    driver.get("https://www.facebook.com/messages/new")
+                inject_reload(driver)
                 try:
                     if len(onetimecode) >= 6:
                         otc_input = driver.find_element(By.CSS_SELECTOR, 'input[autocomplete="one-time-code"]')
@@ -320,8 +324,6 @@ try:
                         chat_btn.find_element(By.CSS_SELECTOR, 'span[class="x6s0dn4 xzolkzo x12go9s9 x1rnf11y xprq8jg x9f619 x3nfvp2 xl56j7k x1spa7qu x1kpxq89 xsmyaan"]')
                     except Exception:
                         continue
-
-                    new_chat_coming = True
                     
                     driver.execute_script("arguments[0].click();", chat_btn)
                     time.sleep(2)
@@ -334,69 +336,87 @@ try:
                         pass
                     
                     try:
-                        profile_btn = driver.find_element(By.CSS_SELECTOR, 'a[class="x1i10hfl x1qjc9v5 xjbqb8w xjqpnuy xa49m3k xqeqjp1 x2hbi6w x13fuv20 xu3j5b3 x1q0q8m5 x26u7qi x972fbf xcfux6l x1qhh985 xm0m39n x9f619 x1ypdohk xdl72j9 xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r x2lwn1j xeuugli xexx8yu x4uap5 x18d9i69 xkhd6sd x1n2onr6 x16tdsg8 x1hl2dhg xggy1nq x1ja2u2z x1t137rt x1o1ewxj x3x9cwd x1e5q0jg x13rtm0m x1q0g3np x87ps6o x1lku1pv x1rg5ohu x1a2a7pz xs83m0k"]')
-                        profile_link = urljoin(driver.current_url, profile_btn.get_attribute("href"))
+                        main = driver.find_element(By.CSS_SELECTOR, 'div[role="main"]')
+                        profile_btn = main.find_elements(By.CSS_SELECTOR, 'a[tabindex="0"]')
+                        facebook_info = None
+                        if len(profile_btn) > 0:
+                            profile_btn = profile_btn[0]
+                            profile_link = urljoin(driver.current_url, profile_btn.get_attribute("href"))
 
-                        facebook_info = facebook_infos.get(profile_link)
-                        if facebook_info != None:
-                            last_access_ts = facebook_info.get("Last access", 0)
-                            
-                            # Get the current time Unix timestamp minus 3 days (3 days = 3 * 24 * 60 * 60 seconds)
-                            three_days_ago = int(time.time()) - 3 * 24 * 60 * 60
-                            
-                            if last_access_ts < three_days_ago:
-                                facebook_info = None
+                            facebook_info = facebook_infos.get(profile_link)
+                            if facebook_info != None:
+                                last_access_ts = facebook_info.get("Last access", 0)
+                                
+                                # Get the current time Unix timestamp minus 3 days (3 days = 3 * 24 * 60 * 60 seconds)
+                                three_days_ago = int(time.time()) - 3 * 24 * 60 * 60
+                                
+                                if last_access_ts < three_days_ago:
+                                    facebook_info = None
 
-                        if facebook_info == None:
-                            driver.switch_to.window(profile_tab)
-                            driver.get(profile_link)
-                            print(f"Đang lấy thông tin cá nhân từ {profile_link}")
-                            
-                            wait_for_load(driver)
-                            time.sleep(0.5)
-            
-                            find_who_chatted = driver.find_elements(By.CSS_SELECTOR, 'h1[class^="html-h1 "]')
-                            who_chatted = find_who_chatted[-1].text
-                            
-                            facebook_info = { "Facebook name" : who_chatted, "Facebook url" :  profile_link, "Last access" : int(time.time()) }
-                            
-                            # Loop through the profile sections
-                            for sk in sk_list:
-                                # Build the full URL for the profile section
-                                info_url = urljoin(profile_link, sk)
-                                driver.get(info_url)
-
-                                # Wait for the page to load
+                            if facebook_info == None:
+                                driver.switch_to.window(profile_tab)
+                                driver.get(profile_link)
+                                print(f"Đang lấy thông tin cá nhân từ {profile_link}")
+                                
                                 wait_for_load(driver)
-                                #time.sleep(0.5)
+                                time.sleep(0.5)
+                
+                                find_who_chatted = driver.find_elements(By.CSS_SELECTOR, 'h1[class^="html-h1 "]')
+                                who_chatted = find_who_chatted[-1].text
+                                
+                                facebook_info = { "Facebook name" : who_chatted, "Facebook url" :  profile_link, "Last access" : int(time.time()) }
+                                
+                                # Loop through the profile sections
+                                for sk in sk_list:
+                                    # Build the full URL for the profile section
+                                    info_url = urljoin(profile_link, sk)
+                                    driver.get(info_url)
 
-                                # Find the info elements
-                                info_elements = driver.find_elements(By.CSS_SELECTOR, 'div[class="xyamay9 xqmdsaz x1gan7if x1swvt13"] > div')
+                                    # Wait for the page to load
+                                    wait_for_load(driver)
+                                    #time.sleep(0.5)
 
-                                # Loop through each info element
-                                for info_element in info_elements:
-                                    title = find_and_get_text(info_element, By.CSS_SELECTOR, 'div[class="xieb3on x1gslohp"]')
-                                    if title is not None:
-                                        detail = []
+                                    # Find the info elements
+                                    info_elements = driver.find_elements(By.CSS_SELECTOR, 'div[class="xyamay9 xqmdsaz x1gan7if x1swvt13"] > div')
 
-                                        # Append the text lists to the detail array
-                                        detail.extend(find_and_get_list_text(info_element, By.CSS_SELECTOR, 'div[class="x1hq5gj4"]'))
-                                        detail.extend(find_and_get_list_text(info_element, By.CSS_SELECTOR, 'div[class="xat24cr"]'))
+                                    # Loop through each info element
+                                    for info_element in info_elements:
+                                        title = find_and_get_text(info_element, By.CSS_SELECTOR, 'div[class="xieb3on x1gslohp"]')
+                                        if title is not None:
+                                            detail = []
 
-                                        # Add title and details to the facebook_info dictionary
-                                        facebook_info[title] = detail
-                            
-                            facebook_infos[profile_link] = facebook_info
+                                            # Append the text lists to the detail array
+                                            detail.extend(find_and_get_list_text(info_element, By.CSS_SELECTOR, 'div[class="x1hq5gj4"]'))
+                                            detail.extend(find_and_get_list_text(info_element, By.CSS_SELECTOR, 'div[class="xat24cr"]'))
+
+                                            # Add title and details to the facebook_info dictionary
+                                            facebook_info[title] = detail
+                                
+                                facebook_infos[profile_link] = facebook_info
+                            else:
+                                who_chatted = facebook_info.get("Facebook name")
+
+                            last_access_ts = facebook_info.get("Last access", 0)
+                            facebook_info["Last access"] = int(time.time())
+                            if pickle_to_file(f_facebook_infos, facebook_infos) == False:
+                                print(f"Không thể sao lưu vào {f_facebook_infos}")
+                            # First time upload
+                            if last_access_ts == 0 and (STORAGE_BRANCE is not None and STORAGE_BRANCE != ""):
+                                upload_file(GITHUB_TOKEN, GITHUB_REPO, f_facebook_infos, STORAGE_BRANCE)
                         else:
-                            who_chatted = facebook_info.get("Facebook name")
-
-                        last_access_ts = facebook_info.get("Last access", 0)
-                        facebook_info["Last access"] = int(time.time())
-                        if pickle_to_file(f_facebook_infos, facebook_infos) == False:
-                            print(f"Không thể sao lưu vào {f_facebook_infos}")
-                        # First time upload
-                        if last_access_ts == 0 and (STORAGE_BRANCE is not None and STORAGE_BRANCE != ""):
-                            upload_file(GITHUB_TOKEN, GITHUB_REPO, f_facebook_infos, STORAGE_BRANCE)
+                            group_member_list_btn = main.find_element(By.CSS_SELECTOR, 'div[tabindex="0"]')
+                            who_chatted = group_member_list_btn.find_element(By.CSS_SELECTOR, 'h2').text
+                            driver.execute_script("arguments[0].click();", group_member_list_btn)
+                            time.sleep(3)
+                            dialog = driver.find_element(By.CSS_SELECTOR, 'div[role="dialog"]')
+                            members = dialog.find_elements(By.CSS_SELECTOR, 'article')
+                            member_name_list = []
+                            for member in members:
+                                member_name_list.append(member.text)
+                            facebook_info = { "Facebook group name" : who_chatted, "Member" : member_name_list }
+                            driver.execute_script("""
+                                document.querySelector('div[class="__fb-light-mode x1n2onr6 xzkaem6"]').style.display = 'none';
+                            """)
                     except Exception as e:
                         print(e)
                         continue
@@ -523,6 +543,13 @@ try:
                         except Exception:
                             name = None
                             mark = "text_message"
+
+                        if name == None:
+                            try: 
+                                name = msg_element.find_element(By.CSS_SELECTOR, 'img[class="x1rg5ohu x5yr21d xl1xv1r xh8yej3"]').get_attribute("alt")
+                                name =  f"{who_chatted} ({name})"
+                            except Exception:
+                                name = None
 
                         if name == None:
                             try: 
@@ -683,9 +710,6 @@ try:
                             print(e)
                             time.sleep(2)
                             continue
-                    
-                if new_chat_coming:
-                    driver.get("https://www.facebook.com/messages/t/156025504001094")
         except Exception as e:
             print(e)
     if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
