@@ -24,7 +24,7 @@
 Để chạy workflows `aichat-schedule` và `traodoisub`, bạn cần thiết lập các secrets:  
 
 - **`PASSWORD`**: Mật khẩu để giải mã các tệp zip trong thư mục `secrets`.
-- **`GENKEY`**: Google Developer API key để sử dụng Gemini AI.  (cho `aichat-schedule`)
+- **`GENKEY`**: [Google Developer API key](https://aistudio.google.com/app/apikey) để sử dụng Gemini AI.  (cho `aichat-schedule`)
 - **`TDS_TOKEN`**: Token dùng API của `traodoisub.com`. (cho `traodoisub`)
 
 ---
