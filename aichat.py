@@ -318,15 +318,20 @@ try:
 
                 # find all unread single chats not group (span[class="x6s0dn4 xzolkzo x12go9s9 x1rnf11y xprq8jg x9f619 x3nfvp2 xl56j7k x1spa7qu x1kpxq89 xsmyaan"])
                 chat_btns = driver.find_elements(By.CSS_SELECTOR, 'a[href^="/messages/"]')
+                chat_list = []
                 for chat_btn in chat_btns:
                     #print(chat_btn.text)
                     try:
                         chat_btn.find_element(By.CSS_SELECTOR, 'span[class="x6s0dn4 xzolkzo x12go9s9 x1rnf11y xprq8jg x9f619 x3nfvp2 xl56j7k x1spa7qu x1kpxq89 xsmyaan"]')
+                        chat_list.append(chat_btn.get_attribute("href"))
                     except Exception:
                         continue
-                    
-                    driver.execute_script("arguments[0].click();", chat_btn)
-                    time.sleep(2)
+
+                for chat_href in chat_list:
+                    chat_link = urljoin(driver.current_url, chat_href)
+                    driver.get(chat_link)
+                    wait_for_load(driver)
+                    time.sleep(0.5)
                     
                     try:
                         button = driver.find_element(By.CSS_SELECTOR, 'p[class="xat24cr xdj266r"]')
@@ -414,9 +419,9 @@ try:
                             for member in members:
                                 member_name_list.append(member.text)
                             facebook_info = { "Facebook group name" : who_chatted, "Member" : member_name_list }
-                            driver.execute_script("""
-                                document.querySelector('div[class="__fb-light-mode x1n2onr6 xzkaem6"]').style.display = 'none';
-                            """)
+                            driver.refresh()
+                            wait_for_load(driver)
+                            time.sleep(0.5)
                     except Exception as e:
                         print(e)
                         continue
