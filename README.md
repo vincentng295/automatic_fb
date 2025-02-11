@@ -35,6 +35,8 @@
 - Cookies và các file liên quan sẽ được mã hóa bằng mật khẩu của bạn (`PASSWORD` secret) để không ai có thể truy cập tài khoản Facebook của bạn thông qua việc sử dụng cookies.
 - Khi thay đổi tài khoản Facebook, hãy xóa nhánh `cache/schedule` rồi chạy lại workflow `Run AI Chat on Messenger Account`
 
+***[Xem thêm](docs/aichat-schedule.md)***
+
 ---
 
 ### Auto Traodoisub 
@@ -59,6 +61,10 @@ Cấu trúc json mẫu:
     }
 ]
 ```
+
+
+***[Xem thêm](docs/traodoisub.md)***
+
 
 ## 📌 Lưu ý
 
