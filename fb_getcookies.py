@@ -65,7 +65,6 @@ def __chrome_driver__(scoped_dir = None, headless = True, incognito = False):
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--lang=en-US")
-    chrome_options.add_argument("--disable-extensions")
     # (Optional) Set a common user agent string
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " \
                  "AppleWebKit/537.36 (KHTML, like Gecko) " \
@@ -74,6 +73,16 @@ def __chrome_driver__(scoped_dir = None, headless = True, incognito = False):
     # Use a specific user data directory if provided
     if scoped_dir:
         chrome_options.add_argument(f"--user-data-dir={scoped_dir}")
+        
+    # Define the path to the directory containing unpacked extension directories
+    extensions_dir = f"{cwd}/setup/plugins"
+
+    # Iterate through every directory under the path and add as an unpacked extension
+    for dir_name in os.listdir(extensions_dir):
+        extension_path = os.path.join(extensions_dir, dir_name)
+        if os.path.isdir(extension_path):  # Check if it's a directory
+            chrome_options.add_argument(f"--load-extension={extension_path}")
+
     # Initialize the driver
     driver = webdriver.Chrome(options=chrome_options)
     # Load a blank page and further modify navigator properties to mask automation flags
