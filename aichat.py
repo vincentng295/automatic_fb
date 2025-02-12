@@ -323,11 +323,13 @@ try:
                     #print(chat_btn.text)
                     try:
                         chat_btn.find_element(By.CSS_SELECTOR, 'span[class="x6s0dn4 xzolkzo x12go9s9 x1rnf11y xprq8jg x9f619 x3nfvp2 xl56j7k x1spa7qu x1kpxq89 xsmyaan"]')
-                        chat_list.append(chat_btn.get_attribute("href"))
+                        chat_name = chat_btn.find_element(By.CSS_SELECTOR, 'span[class="x1lliihq x6ikm8r x10wlt62 x1n2onr6 xlyipyv xuxw1ft"]').text
+                        chat_list.append({ "href" : chat_btn.get_attribute("href"), "name" : chat_name })
                     except Exception:
                         continue
 
-                for chat_href in chat_list:
+                for chat_info in chat_list:
+                    chat_href = chat_info["href"]
                     chat_link = urljoin(driver.current_url, chat_href)
                     driver.get(chat_link)
                     wait_for_load(driver)
@@ -408,20 +410,8 @@ try:
                             if last_access_ts == 0 and (STORAGE_BRANCE is not None and STORAGE_BRANCE != ""):
                                 upload_file(GITHUB_TOKEN, GITHUB_REPO, f_facebook_infos, STORAGE_BRANCE)
                         else:
-                            main = driver.find_element(By.CSS_SELECTOR, 'div[role="main"]')
-                            group_member_list_btn = main.find_element(By.CSS_SELECTOR, 'div[tabindex="0"]')
-                            who_chatted = group_member_list_btn.find_element(By.CSS_SELECTOR, 'h2').text
-                            driver.execute_script("arguments[0].click();", group_member_list_btn)
-                            time.sleep(3)
-                            dialog = driver.find_element(By.CSS_SELECTOR, 'div[role="dialog"]')
-                            members = dialog.find_elements(By.CSS_SELECTOR, 'article')
-                            member_name_list = []
-                            for member in members:
-                                member_name_list.append(member.text)
-                            facebook_info = { "Facebook group name" : who_chatted, "Member" : member_name_list }
-                            driver.refresh()
-                            wait_for_load(driver)
-                            time.sleep(0.5)
+                            who_chatted = chat_info["name"]
+                            facebook_info = { "Facebook group name" : who_chatted }
                     except Exception as e:
                         print(e)
                         continue
