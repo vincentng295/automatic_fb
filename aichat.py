@@ -341,8 +341,7 @@ try:
                         pass
                     
                     try:
-                        main = driver.find_element(By.CSS_SELECTOR, 'div[role="main"]')
-                        profile_btn = main.find_elements(By.CSS_SELECTOR, 'a[tabindex="0"]')
+                        profile_btn = driver.find_elements(By.CSS_SELECTOR, 'a[class="x1i10hfl x1qjc9v5 xjbqb8w xjqpnuy xa49m3k xqeqjp1 x2hbi6w x13fuv20 xu3j5b3 x1q0q8m5 x26u7qi x972fbf xcfux6l x1qhh985 xm0m39n x9f619 x1ypdohk xdl72j9 xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r x2lwn1j xeuugli xexx8yu x4uap5 x18d9i69 xkhd6sd x1n2onr6 x16tdsg8 x1hl2dhg xggy1nq x1ja2u2z x1t137rt x1o1ewxj x3x9cwd x1e5q0jg x13rtm0m x1q0g3np x87ps6o x1lku1pv x1rg5ohu x1a2a7pz xs83m0k"]')
                         facebook_info = None
                         if len(profile_btn) > 0:
                             profile_btn = profile_btn[0]
@@ -409,6 +408,7 @@ try:
                             if last_access_ts == 0 and (STORAGE_BRANCE is not None and STORAGE_BRANCE != ""):
                                 upload_file(GITHUB_TOKEN, GITHUB_REPO, f_facebook_infos, STORAGE_BRANCE)
                         else:
+                            main = driver.find_element(By.CSS_SELECTOR, 'div[role="main"]')
                             group_member_list_btn = main.find_element(By.CSS_SELECTOR, 'div[tabindex="0"]')
                             who_chatted = group_member_list_btn.find_element(By.CSS_SELECTOR, 'h2').text
                             driver.execute_script("arguments[0].click();", group_member_list_btn)
