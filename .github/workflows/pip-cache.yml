@@ -5,7 +5,6 @@ on: [ workflow_dispatch, push ]
 jobs:
   pip-install:
     runs-on: windows-latest
-    timeout-minutes: 310
 
     steps:
       # Checkout the repository

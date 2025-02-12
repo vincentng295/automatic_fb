@@ -4,22 +4,26 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from fb_getcookies import __chrome_driver__
 import time
+#import os
 
 try:
+    drivers = []
+    scoped_dir = None
     for opt in [
-        (None, True, False),
-        (None, True, True),
-        (None, False, False),
-        (None, False, True),
+        (scoped_dir, True, False),
+        (scoped_dir, True, True),
+        (scoped_dir, False, False),
+        (scoped_dir, False, True),
     ]:
         driver = __chrome_driver__(*opt)
         driver.get("https://deviceandbrowserinfo.com/are_you_a_bot")
+        drivers.append(driver)
+    time.sleep(5)
+    for driver in drivers:
         wait = WebDriverWait(driver, 20)
-
         wait.until(
             lambda d: d.execute_script("return document.readyState") == "complete"
         )
-        time.sleep(5)
         resultsBotTest = driver.find_element(By.ID, "resultsBotTest").text
         resultsBotTestDetails = driver.find_element(By.ID, "resultsBotTestDetails").text
         print("resultsBotTest:", resultsBotTest)
@@ -29,4 +33,5 @@ try:
 except Exception as e:
     print(e)
 finally:
-    driver.quit()
+    for driver in drivers:
+        driver.quit()
