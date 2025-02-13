@@ -436,6 +436,13 @@ try:
                     message_id = path_parts[-1] if len(path_parts) > 1 else "0"
 
                     try:
+                        WebDriverWait(driver, 10).until(
+                        EC.visibility_of_element_located((By.CSS_SELECTOR, 'div[class="x1uipg7g xu3j5b3 xol2nv xlauuyb x26u7qi x19p7ews x78zum5 xdt5ytf x1iyjqo2 x6ikm8r x10wlt62"]'))
+    )
+                    except Exception as e:
+                        print(e)
+
+                    try:
                         msg_scroller = driver.find_element(By.CSS_SELECTOR, 'div[class="x78zum5 xdt5ytf x1iyjqo2 x6ikm8r x1odjw0f xish69e x16o0dkt"]')
                         for _x in range(30):
                             # Convert div to disabled-div to prevent message from disappearing before collection
