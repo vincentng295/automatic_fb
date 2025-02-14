@@ -334,7 +334,14 @@ try:
                     driver.get(chat_link)
                     wait_for_load(driver)
                     time.sleep(0.5)
-                    
+                    # Wait until box is visible
+                    try:
+                        WebDriverWait(driver, 15).until(
+                        EC.visibility_of_element_located((By.CSS_SELECTOR, 'div[class="x1uipg7g xu3j5b3 xol2nv xlauuyb x26u7qi x19p7ews x78zum5 xdt5ytf x1iyjqo2 x6ikm8r x10wlt62"]'))
+    )
+                    except Exception as e:
+                        print(e)
+
                     try:
                         button = driver.find_element(By.CSS_SELECTOR, 'p[class="xat24cr xdj266r"]')
                         driver.execute_script("arguments[0].click();", button)
@@ -434,13 +441,6 @@ try:
                     # Split the path and extract the ID
                     path_parts = urlpath.split("/")
                     message_id = path_parts[-1] if len(path_parts) > 1 else "0"
-
-                    try:
-                        WebDriverWait(driver, 10).until(
-                        EC.visibility_of_element_located((By.CSS_SELECTOR, 'div[class="x1uipg7g xu3j5b3 xol2nv xlauuyb x26u7qi x19p7ews x78zum5 xdt5ytf x1iyjqo2 x6ikm8r x10wlt62"]'))
-    )
-                    except Exception as e:
-                        print(e)
 
                     try:
                         msg_scroller = driver.find_element(By.CSS_SELECTOR, 'div[class="x78zum5 xdt5ytf x1iyjqo2 x6ikm8r x1odjw0f xish69e x16o0dkt"]')
