@@ -12,6 +12,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN") # Pass GitHub Token
 GITHUB_REPO = os.getenv("GITHUB_REPO")   # Pass the repository (owner/repo)
 STORAGE_BRANCE = os.getenv("STORAGE_BRANCE")
+if_running_on_github_workflows = (STORAGE_BRANCE is not None and STORAGE_BRANCE != "")
 PASSWORD = os.getenv("PASSWORD")
 encrypt_key = generate_fernet_key(PASSWORD)
 
@@ -40,7 +41,7 @@ if os.getenv("USE_ENV_SETUP") == "true":
     with open(f_login_info, "w") as f:
         json.dump(login_info, f)
 else:
-    if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+    if if_running_on_github_workflows:
         try:
             # Download the encrypted file
             print(f"Đang khôi phục thông tin đăng nhập từ branch: {STORAGE_BRANCE}")
@@ -58,10 +59,10 @@ ai_prompt = login_info.get("ai_prompt", None)
 if ai_prompt is not None and ai_prompt != "":
     with open(f_intro_txt, "w", encoding='utf-8') as f: # What kind of person will AI simulate?
         f.write(ai_prompt)
-    if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+    if if_running_on_github_workflows:
         upload_file(GITHUB_TOKEN, GITHUB_REPO, f_intro_txt, STORAGE_BRANCE, f_intro_txt)
 
-if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+if if_running_on_github_workflows:
     for filename in [ f_intro_txt, f_rules_txt ]:
         try:
             get_file(GITHUB_TOKEN, GITHUB_REPO, filename, STORAGE_BRANCE, filename)
@@ -86,7 +87,7 @@ try:
     if cookies_text is not None:
         with open(filename, "w") as cookies_file:
             json.dump(parse_cookies(cookies_text), cookies_file)
-    elif STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+    elif if_running_on_github_workflows:
         # Download the encrypted file
         print(f"Đang khôi phục cookies từ branch: {STORAGE_BRANCE}")
         get_file(GITHUB_TOKEN, GITHUB_REPO, filename + ".enc", STORAGE_BRANCE, filename + ".enc")
@@ -97,7 +98,7 @@ except Exception as e:
     print(e)
 
 try:
-    if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+    if if_running_on_github_workflows:
         # Download the encrypted file
         print(f"Đang khôi phục cookies từ branch: {STORAGE_BRANCE}")
         get_file(GITHUB_TOKEN, GITHUB_REPO, bakfilename + ".enc", STORAGE_BRANCE, bakfilename + ".enc")
@@ -144,7 +145,7 @@ with open(bakfilename, "w") as bakcookies_file:
     json.dump(bakcookies, bakcookies_file)
 
 try:
-    if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+    if if_running_on_github_workflows:
         # Encrypt file with encrypt key
         print("Đang mã hóa tập tin trước khi tải lên...")
         encrypt_file(filename, filename + ".enc", encrypt_key)

@@ -6,7 +6,6 @@ import copy # For deepcopy
 from datetime import datetime  # For date and time manipulation
 import pytz  # For timezone handling
 from io import BytesIO  # For handling byte streams
-import base64  # For encoding and decoding base64
 import requests  # For making HTTP requests
 from urllib.parse import urljoin, urlparse  # For URL manipulation
 from hashlib import md5  # For hashing
@@ -32,6 +31,8 @@ scoped_dir = os.getenv("SCPDIR")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN") # Pass GitHub Token
 GITHUB_REPO = os.getenv("GITHUB_REPO")   # Pass the repository (owner/repo)
 STORAGE_BRANCE = os.getenv("STORAGE_BRANCE")
+
+if_running_on_github_workflows = (STORAGE_BRANCE is not None and STORAGE_BRANCE != "")
 
 f_intro_txt = "setup/introduction.txt"
 f_rules_txt = "setup/rules.txt"
@@ -132,7 +133,7 @@ try:
 
     f_self_facebook_info = "self_facebook_info.bin"
     try:
-        if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+        if if_running_on_github_workflows:
             get_file(GITHUB_TOKEN, GITHUB_REPO, f_self_facebook_info, STORAGE_BRANCE, f_self_facebook_info)
     except Exception as e:
         print(e)
@@ -174,7 +175,7 @@ try:
                     # Add title and details to the facebook_info dictionary
                     self_facebook_info[title] = detail
         pickle_to_file(f_self_facebook_info, self_facebook_info)
-        if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+        if if_running_on_github_workflows:
             upload_file(GITHUB_TOKEN, GITHUB_REPO, f_self_facebook_info, STORAGE_BRANCE)
 
     gemini_dev_mode = work_jobs.get("aichat", "normal") == "devmode"
@@ -199,7 +200,7 @@ try:
 
     f_facebook_infos = "facebook_infos.bin"
     try:
-        if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+        if if_running_on_github_workflows:
             get_file(GITHUB_TOKEN, GITHUB_REPO, f_facebook_infos, STORAGE_BRANCE, f_facebook_infos)
     except Exception as e:
         print(e)
@@ -414,7 +415,7 @@ try:
                             if pickle_to_file(f_facebook_infos, facebook_infos) == False:
                                 print(f"Không thể sao lưu vào {f_facebook_infos}")
                             # First time upload
-                            if last_access_ts == 0 and (STORAGE_BRANCE is not None and STORAGE_BRANCE != ""):
+                            if last_access_ts == 0 and (if_running_on_github_workflows):
                                 upload_file(GITHUB_TOKEN, GITHUB_REPO, f_facebook_infos, STORAGE_BRANCE)
                         else:
                             who_chatted = chat_info["name"]
@@ -512,7 +513,7 @@ try:
                     day_and_time = current_datetime.strftime("%A, %d %B %Y - %H:%M:%S")
                     
                     prompt_list = []
-                    last_msg = {"message_type" : "none"}
+                    chat_history = []
 
                     header_prompt = get_header_prompt(day_and_time, who_chatted, facebook_info)
 
@@ -527,8 +528,7 @@ try:
                     for msg_element in msg_elements:
                         try:
                             timedate = msg_element.find_element(By.CSS_SELECTOR, 'span[class="x193iq5w xeuugli x13faqbe x1vvkbs x1xmvt09 x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x x4zkp8e x676frb x1pg5gke xvq8zen xo1l8bm x12scifz"]')
-                            last_msg = {"message_type" : "conversation_event", "info" : timedate.text}
-                            prompt_list.append(json.dumps(last_msg, ensure_ascii=False))
+                            chat_history.append({"message_type" : "conversation_event", "info" : timedate.text})
                         except Exception:
                             pass
 
@@ -588,16 +588,17 @@ try:
 
                                     image_hashcode = md5(image_data).hexdigest()
                                     image_name = f"files/img-{message_id}-{image_hashcode}"
+                                    image_name = image_name[:40]
+                                    os.makedirs(os.path.dirname(image_name), exist_ok=True)
                                     # Use BytesIO to create a file-like object for the image
                                     image_file = BytesIO(image_data)
+                                    bytesio_to_file(image_file, image_name + ".jpg")
                                     try:
-                                        image_upload = genai.get_file(image_name[:40])
+                                        genai.get_file(image_name)
                                     except Exception:
-                                        image_upload = genai.upload_file(path = image_file, mime_type = "image/jpeg", name = image_name[:40])
+                                        genai.upload_file(path = image_file, mime_type = "image/jpeg", name = image_name)
                                    
-                                    last_msg = {"message_type" : "image", "info" : {"name" : name, "msg" : "send an image"}, "mentioned_message" : quotes_text}
-                                    prompt_list.append(json.dumps(last_msg, ensure_ascii=False))
-                                    prompt_list.append(image_upload)
+                                    chat_history.append({"message_type" : "file", "info" : {"name" : name, "msg" : "send image", "file_name" : image_name }, "mentioned_message" : quotes_text})
                                 except Exception:
                                     pass
                         except Exception:
@@ -606,30 +607,19 @@ try:
                         try:
                             video_element = msg_element.find_element(By.CSS_SELECTOR, 'video')
                             video_url = video_element.get_attribute("src")
-                            video_data_base64 = driver.execute_script("""
-                                const blobUrl = arguments[0];
-                                return new Promise((resolve) => {
-                                    fetch(blobUrl)  // Use .href or .src depending on the element
-                                        .then(response => response.blob())
-                                        .then(blob => {
-                                            const reader = new FileReader();
-                                            reader.onloadend = () => resolve(reader.result.split(',')[1]); // Base64 string
-                                            reader.readAsDataURL(blob);
-                                        });
-                                });
-                            """, video_url)
-                            video_data = base64.b64decode(video_data_base64)
+                            video_data = get_file_data(driver, video_url)
                             video_hashcode = md5(video_data).hexdigest()
                             video_name = f"files/video-{message_id}-{video_hashcode}"
+                            video_name = video_name[:40]
+                            os.makedirs(os.path.dirname(video_name), exist_ok=True)
                             video_file = BytesIO(video_data)
+                            bytesio_to_file(video_file, video_name + ".mp4")
                             try:
-                                video_upload = genai.get_file(video_name[:40])
+                                genai.get_file(video_name)
                             except Exception:
-                                video_upload = genai.upload_file(path = video_file, mime_type = "video/mp4", name = video_name[:40])
+                                genai.upload_file(path = video_file, mime_type = "video/mp4", name = video_name)
 
-                            last_msg = {"message_type" : "video", "info" : {"name" : name, "msg" : "send a video"}, "mentioned_message" : quotes_text}
-                            prompt_list.append(json.dumps(last_msg, ensure_ascii=False))
-                            prompt_list.append(video_upload)
+                            chat_history.append({"message_type" : "file", "info" : {"name" : name, "msg" : "send video", "file_name" : video_name}, "mentioned_message" : quotes_text})
                         except Exception:
                             pass
 
@@ -655,11 +645,7 @@ try:
                         if name == None:
                             name = "None"
                         
-                        last_msg = {"message_type" : mark, "info" : {"name" : name, "msg" : msg}, "mentioned_message" : quotes_text }
-                        final_last_msg = copy.deepcopy(last_msg)
-                        if is_cmd(msg):
-                            final_last_msg["info"]["msg"] = "<This is command message. It has been hidden>"
-                        prompt_list.append(json.dumps(final_last_msg, ensure_ascii=False))
+                        chat_history.append({"message_type" : mark, "info" : {"name" : name, "msg" : msg}, "mentioned_message" : quotes_text })
 
                         try: 
                             react_elements = msg_element.find_elements(By.CSS_SELECTOR, 'img[height="16"][width="16"]')
@@ -669,13 +655,24 @@ try:
                                     emojis += react_element.get_attribute("alt")
                                 emoji_info = f"The above message was reacted with following emojis: {emojis}"
                                 
-                                last_msg = {"message_type" : "reactions", "info" : emoji_info}
-                                prompt_list.append(json.dumps(last_msg, ensure_ascii=False))
+                                chat_history.append({"message_type" : "reactions", "info" : emoji_info})
                                 
                         except Exception:
                             pass
 
-
+                    if len(chat_history) <= 0:
+                        continue
+                    last_msg = chat_history[-1]
+                    for msg in chat_history:
+                        final_last_msg = msg
+                        if msg["message_type"] == "text_message" and is_cmd(msg["info"]["msg"]):
+                            final_last_msg = copy.deepcopy(msg)
+                            final_last_msg["info"]["msg"] = "<This is command message. It has been hidden>"
+                        prompt_list.append(json.dumps(final_last_msg, ensure_ascii=False))
+                        if msg["message_type"] == "file":
+                            file_name = msg["info"]["file_name"]
+                            prompt_list.append(genai.get_file(file_name))
+                        
                     for prompt in prompt_list:
                         print(prompt)
 
@@ -716,7 +713,7 @@ try:
                             continue
         except Exception as e:
             print(e)
-    if STORAGE_BRANCE is not None and STORAGE_BRANCE != "":
+    if if_running_on_github_workflows:
         upload_file(GITHUB_TOKEN, GITHUB_REPO, f_facebook_infos, STORAGE_BRANCE)
 finally:
     driver.quit()

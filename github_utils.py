@@ -125,9 +125,21 @@ def upload_file(token, repo, file, branch, rename = None, tempdir = "__tmp__"):
     origin = repo_instance.remote(name='origin')
     origin.push(branch, force=True)  # Force push the branch to the remote repository
 
+    full_sha = repo_instance.head.object.hexsha
+
+    if branch.startswith("hidden:"):
+        origin.push(branch, delete=True)
+        print(f"Branch {branch} deleted from remote repository.")
+
+    return full_sha
+
 def get_file(token, repo, file, branch, outfile):
     # GitHub API URL to get the raw file content
     url = f'https://api.github.com/repos/{repo}/contents/{file}?ref={branch}'
+    
+    # Ensure the output directory exists
+    outfile = os.path.abspath(outfile)
+    os.makedirs(os.path.dirname(outfile), exist_ok=True)
     
     # Set up the headers with the token for authentication
     headers = {

@@ -2,6 +2,8 @@ import json  # For handling JSON data
 import shlex  # For parsing shell-like syntax
 import pyotp  # For generating TOTP (Time-based One-Time Passwords)
 from selenium.webdriver.support.ui import WebDriverWait  # For waiting for elements in Selenium
+import base64
+from io import BytesIO
 
 def get_instructions_prompt(myname, ai_prompt, self_facebook_info, rules_prompt, devmode):
     instructions = [
@@ -183,3 +185,28 @@ def parse_opts_string(input_str):
         value = key_value[1].strip() if len(key_value) > 1 else True  # Strip and assign value or set True
         result[key] = value
     return result
+
+def get_file_data(driver, url):
+    base64_data = driver.execute_script("""
+        const blobUrl = arguments[0];
+        return new Promise((resolve) => {
+            fetch(blobUrl)  // Use .href or .src depending on the element
+                .then(response => response.blob())
+                .then(blob => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result.split(',')[1]); // Base64 string
+                    reader.readAsDataURL(blob);
+                });
+        });
+    """, url)
+    return base64.b64decode(base64_data)
+
+def bytesio_to_file(bytes_io: BytesIO, file_path: str):
+    """
+    Writes the contents of a BytesIO object to a file.
+
+    :param bytes_io: BytesIO object containing binary data.
+    :param file_path: Path to the output file.
+    """
+    with open(file_path, 'wb') as f:
+        f.write(bytes_io.getvalue())
