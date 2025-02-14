@@ -337,9 +337,9 @@ try:
                     time.sleep(0.5)
                     # Wait until box is visible
                     try:
-                        WebDriverWait(driver, 15).until(
-                        EC.visibility_of_element_located((By.CSS_SELECTOR, 'div[class="x1uipg7g xu3j5b3 xol2nv xlauuyb x26u7qi x19p7ews x78zum5 xdt5ytf x1iyjqo2 x6ikm8r x10wlt62"]'))
-    )
+                        main = WebDriverWait(driver, 15).until(
+                            EC.visibility_of_element_located((By.CSS_SELECTOR, 'div[role="main"]'))
+                        )
                     except Exception as e:
                         print(e)
 
@@ -443,67 +443,29 @@ try:
                     path_parts = urlpath.split("/")
                     message_id = path_parts[-1] if len(path_parts) > 1 else "0"
 
-                    try:
-                        msg_scroller = driver.find_element(By.CSS_SELECTOR, 'div[class="x78zum5 xdt5ytf x1iyjqo2 x6ikm8r x1odjw0f xish69e x16o0dkt"]')
-                        for _x in range(30):
-                            # Convert div to disabled-div to prevent message from disappearing before collection
-                            driver.execute_script("""
-        var divs = document.querySelectorAll('div.x78zum5.xdt5ytf[data-virtualized="false"]');
-        divs.forEach(function(div) {
-            var disabledDiv = document.createElement('disabled-div');
-            disabledDiv.innerHTML = div.innerHTML;  // Keep the content inside
-            div.parentNode.replaceChild(disabledDiv, div);  // Replace the div with the custom tag
-        });
-    """)
-                            driver.execute_script("""
-        var divs = document.querySelectorAll('div.x78zum5.xdt5ytf[data-virtualized="true"]');
-        divs.forEach(function(div) {
-            var disabledDiv = document.createElement('disabled-div'); //
-            disabledDiv.innerHTML = div.innerHTML;  // Keep the content inside
-            div.parentNode.replaceChild(disabledDiv, div);  // Replace the div with the custom tag
-        });
-    """)
-
-                            driver.execute_script("arguments[0].scrollTop = 0;", msg_scroller)
-                            time.sleep(0.1)
-                        driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight;", msg_scroller)
-                    except Exception:
-                        pass
-
                     time.sleep(1)
 
                     try:
-                        msg_table = driver.find_element(By.CSS_SELECTOR, 'div[class="x1uipg7g xu3j5b3 xol2nv xlauuyb x26u7qi x19p7ews x78zum5 xdt5ytf x1iyjqo2 x6ikm8r x10wlt62"]')
+                        msg_table = main.find_element(By.CSS_SELECTOR, 'div[role="grid"]')
                     except Exception:
                         continue
-                        
                     try:
-                        msg_elements = msg_table.find_elements(By.CSS_SELECTOR, 'div[role="row"]')
+                        msg_scroller = msg_table.find_element(By.CSS_SELECTOR, 'div[role="none"]')
+                        for _x in range(30):
+                            driver.execute_script("""
+                                var divs = document.querySelectorAll('div.x78zum5.xdt5ytf[data-virtualized="false"], div.x78zum5.xdt5ytf[data-virtualized="true"]');
+                                divs.forEach(function(div) {
+                                    var disabledDiv = document.createElement('disabled-div');
+                                    disabledDiv.innerHTML = div.innerHTML;  // Keep the content inside
+                                    div.parentNode.replaceChild(disabledDiv, div);  // Replace the div with the custom tag
+                                });
+                            """)
+                            # Scroll to the top of the message scroller
+                            driver.execute_script("arguments[0].scrollTop = 0;", msg_scroller)
+                            time.sleep(0.1)
                     except Exception:
-                        continue
+                        msg_scroller = None
 
-                    js_code = """
-                        const targetDivs = document.querySelectorAll('div[dir="auto"][class^="html-div "]');
-
-                        targetDivs.forEach(div => {
-                          // Replace img elements
-                          const imgs = div.querySelectorAll('img[height="16"][width="16"]');
-                          imgs.forEach(img => {
-                            const span = document.createElement('span');
-                            span.textContent = img.alt || 'No alt content';
-                            img.replaceWith(span);
-                          });
-
-                          // Update span elements with a specific class
-                          const spans = div.querySelectorAll('span[class="html-span xexx8yu x4uap5 x18d9i69 xkhd6sd x1hl2dhg x16tdsg8 x1vvkbs x3nfvp2 x1j61x8r x1fcty0u xdj266r xat24cr xgzva0m xhhsvwb xxymvpz xlup9mm x1kky2od"]');
-                          spans.forEach(span => {
-                            span.setAttribute('class', '');
-                          });
-                        });
-                    """
-
-                    # Execute the JavaScript code
-                    driver.execute_script(js_code)
                     time.sleep(1)
 
                     # Get current date and time
@@ -525,10 +487,11 @@ try:
                     except Exception:
                         pass
 
-                    for msg_element in msg_elements:
+                    print("Đang đọc tin nhắn...")
+                    for msg_element in reversed(msg_table.find_elements(By.CSS_SELECTOR, 'div[role="row"]')):
                         try:
                             timedate = msg_element.find_element(By.CSS_SELECTOR, 'span[class="x193iq5w xeuugli x13faqbe x1vvkbs x1xmvt09 x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x x4zkp8e x676frb x1pg5gke xvq8zen xo1l8bm x12scifz"]')
-                            chat_history.append({"message_type" : "conversation_event", "info" : timedate.text})
+                            chat_history.insert(0, {"message_type" : "conversation_event", "info" : timedate.text})
                         except Exception:
                             pass
 
@@ -598,7 +561,7 @@ try:
                                     except Exception:
                                         genai.upload_file(path = image_file, mime_type = "image/jpeg", name = image_name)
                                    
-                                    chat_history.append({"message_type" : "file", "info" : {"name" : name, "msg" : "send image", "file_name" : image_name }, "mentioned_message" : quotes_text})
+                                    chat_history.insert(0, {"message_type" : "file", "info" : {"name" : name, "msg" : "send image", "file_name" : image_name }, "mentioned_message" : quotes_text})
                                 except Exception:
                                     pass
                         except Exception:
@@ -619,7 +582,7 @@ try:
                             except Exception:
                                 genai.upload_file(path = video_file, mime_type = "video/mp4", name = video_name)
 
-                            chat_history.append({"message_type" : "file", "info" : {"name" : name, "msg" : "send video", "file_name" : video_name}, "mentioned_message" : quotes_text})
+                            chat_history.insert(0, {"message_type" : "file", "info" : {"name" : name, "msg" : "send video", "file_name" : video_name}, "mentioned_message" : quotes_text})
                         except Exception:
                             pass
 
@@ -645,7 +608,7 @@ try:
                         if name == None:
                             name = "None"
                         
-                        chat_history.append({"message_type" : mark, "info" : {"name" : name, "msg" : msg}, "mentioned_message" : quotes_text })
+                        chat_history.insert(0, {"message_type" : mark, "info" : {"name" : name, "msg" : msg}, "mentioned_message" : quotes_text })
 
                         try: 
                             react_elements = msg_element.find_elements(By.CSS_SELECTOR, 'img[height="16"][width="16"]')
@@ -655,10 +618,12 @@ try:
                                     emojis += react_element.get_attribute("alt")
                                 emoji_info = f"The above message was reacted with following emojis: {emojis}"
                                 
-                                chat_history.append({"message_type" : "reactions", "info" : emoji_info})
+                                chat_history.insert(0, {"message_type" : "reactions", "info" : emoji_info})
                                 
                         except Exception:
                             pass
+
+                    print("Đã đọc xong!")
 
                     if len(chat_history) <= 0:
                         continue
