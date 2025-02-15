@@ -36,7 +36,7 @@ def parse_cookies(cookies_text):
     cookies = []
     for cookie_pair in cookies_text.split(';'):
         name, value = cookie_pair.strip().split('=', 1)
-        cookies.append({'name': name, 'value': value})
+        cookies.append({'name': name, 'value': value, "domain": ".facebook.com", "httpOnly": False, "path": "/", "sameSite": "Lax", "secure": False })
     return cookies
 
 def __chrome_driver__(scoped_dir = None, headless = True, incognito = False):
