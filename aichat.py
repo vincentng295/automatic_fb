@@ -58,6 +58,7 @@ except Exception:
 - Avoid unnecessary explanations or details beyond the reply itself.
 - Feel free to introduce yourself when meeting someone new.
 - Make the chat engaging by asking interesting questions.
+- In group chats, you should only reply when necessary. To skip replying, just say "/SKIP"
 - Provide only the response content without introductory phrases or multiple options.
 """
 
@@ -492,7 +493,7 @@ try:
                         pass
 
                     print("Đang đọc tin nhắn...")
-                    for _x in range(10):
+                    for _x in range(3):
                         stop = False
                         for msg_element in reversed(msg_table.find_elements(By.CSS_SELECTOR, 'div[role="row"]:not([__read])')):
                             try: 
@@ -700,12 +701,14 @@ try:
                                     caption = parse_and_execute(last_msg["info"]["msg"])
                                 else:
                                     caption = model.generate_content(prompt_list).text
+                            print("AI Trả lời:", caption)
+                            if caption.strip() == "/SKIP":
+                                break
                             button.send_keys(Keys.CONTROL + "a")  # Select all text
                             button.send_keys(Keys.DELETE)  # Delete the selected text
                             time.sleep(0.5)
                             button.send_keys(remove_non_bmp_characters(replace_emoji_with_shortcut(caption) + "\n"))
 
-                            print("AI Trả lời:", caption)
                             chat_history.append({"message_type" : "your_text_message", "info" : {"name" : myname, "msg" : caption}, "mentioned_message" : None })
                             chat_histories[message_id] = chat_history
                             time.sleep(2)
