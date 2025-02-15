@@ -194,7 +194,7 @@ try:
     # Setup persona instruction
     genai.configure(api_key=genai_key)
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
+        model_name="gemini-2.0-flash",
         system_instruction = instruction
     )
     for text in instruction:
