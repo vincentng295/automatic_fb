@@ -210,3 +210,67 @@ def bytesio_to_file(bytes_io: BytesIO, file_path: str):
     """
     with open(file_path, 'wb') as f:
         f.write(bytes_io.getvalue())
+
+import base64
+import io
+from PIL import Image
+import time
+import requests
+
+def image_to_base64(image_bytesio):
+    """ Convert BytesIO image to Base64 string """
+    image = Image.open(image_bytesio)
+    buffered = io.BytesIO()
+    image.save(buffered, format="PNG")  # Convert to PNG format
+    return base64.b64encode(buffered.getvalue()).decode()
+
+def download_image_to_bytesio(image_link):
+    """ Download an image from a URL and return it as a BytesIO object """
+    response = requests.get(image_link)
+    if response.status_code != 200:
+        raise Exception(f"Failed to download image: {image_link}")
+    return io.BytesIO(response.content)
+
+def drop_image(driver, element, image_bytesio):
+    """ Drop a BytesIO image into a web element using JavaScript """
+    base64_image = image_to_base64(image_bytesio)
+
+    js_script = """
+    async function dropBase64Image(base64Data, dropTarget) {
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'image/png' });
+        const file = new File([blob], 'image.png', { type: 'image/png' });
+
+        const dt = new DataTransfer();
+        dt.items.add(file);
+
+        const event = new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt });
+        dropTarget.dispatchEvent(event);
+    }
+
+    dropBase64Image(arguments[0], arguments[1]);
+    """
+
+    driver.execute_script(js_script, base64_image, element)
+
+import re
+
+def extract_image_keywords(text):
+    pattern = r'\[image\](.*?)\[/image\]'
+    keywords = re.findall(pattern, text)  # Extract keywords
+    cleaned_text = re.sub(pattern, '', text)  # Remove tags from text
+    return cleaned_text.strip(), keywords
+
+from bing_image import Bing
+import random
+
+def get_random_image_link(keyword, get = 10):
+    img_links = Bing(keyword, get, "off", 60, "", False).get_image_links()
+    return random.choice(img_links)

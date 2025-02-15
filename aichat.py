@@ -59,6 +59,7 @@ except Exception:
 - Feel free to introduce yourself when meeting someone new.
 - Make the chat engaging by asking interesting questions.
 - In group chats, you should only reply when necessary. To skip replying, just say "/SKIP"
+- To send the image, add [image]keyword[/image] into your message
 - Provide only the response content without introductory phrases or multiple options.
 """
 
@@ -701,13 +702,17 @@ try:
                                     caption = parse_and_execute(last_msg["info"]["msg"])
                                 else:
                                     caption = model.generate_content(prompt_list).text
+                            reply_msg, img_keywords = extract_image_keywords(caption)
+
                             print("AI Trả lời:", caption)
                             if caption.strip() == "/SKIP":
                                 break
+                            for img_keyword in img_keywords:
+                                drop_image(driver, button, download_image_to_bytesio(get_random_image_link(img_keyword)))
                             button.send_keys(Keys.CONTROL + "a")  # Select all text
                             button.send_keys(Keys.DELETE)  # Delete the selected text
                             time.sleep(0.5)
-                            button.send_keys(remove_non_bmp_characters(replace_emoji_with_shortcut(caption) + "\n"))
+                            button.send_keys(remove_non_bmp_characters(replace_emoji_with_shortcut(reply_msg) + "\n"))
 
                             chat_history.append({"message_type" : "your_text_message", "info" : {"name" : myname, "msg" : caption}, "mentioned_message" : None })
                             chat_histories[message_id] = chat_history
