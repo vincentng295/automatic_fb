@@ -477,7 +477,8 @@ try:
                     prompt_list = []
                         
                     chat_history = chat_histories.get(message_id, [])
-                    print(json.dumps(chat_history, indent=4))
+                    if "debug" in work_jobs:
+                        print(json.dumps(chat_history, indent=4, ensure_ascii=False))
                     chat_history_new = []
 
                     header_prompt = get_header_prompt(day_and_time, who_chatted, facebook_info)
@@ -673,9 +674,12 @@ try:
                                     print(e)
                                     continue
                             prompt_list.append(file_upload)
-                        
-                    for prompt in prompt_list:
-                        print(prompt)
+
+                    if "debug" in work_jobs:
+                        for prompt in prompt_list:
+                            print(prompt)
+                    else:
+                        print(f"<{len(chat_history)} tin nhắn từ {who_chatted}>")
 
                     if last_msg["message_type"] == "your_text_message":
                         continue
@@ -703,8 +707,8 @@ try:
 
                             print("AI Trả lời:", caption)
                             chat_history.append({"message_type" : "your_text_message", "info" : {"name" : myname, "msg" : caption}, "mentioned_message" : None })
+                            chat_histories[message_id] = chat_history
                             time.sleep(2)
-
                             break
                         except Exception as e:
                             if len(driver.find_elements(By.CSS_SELECTOR, 'div.x1n2onr6.x1ja2u2z.x9f619.x78zum5.xdt5ytf.x2lah0s.x193iq5w.xyamay9.xkh2ocl.x57kliw.x1epquy7.x13fuv20.x178xt8z.x1l90r2v')):
@@ -713,7 +717,6 @@ try:
                             print(e)
                             time.sleep(2)
                             continue
-                    chat_histories[message_id] = chat_history
         except Exception as e:
             print(e)
 
