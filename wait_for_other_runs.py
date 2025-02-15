@@ -22,5 +22,5 @@ if GITHUB_REPO is not None and GITHUB_REPO != "":
         if _msg != msg:
             print(msg)
             _msg = msg
-        time.sleep(3)
+        time.sleep(5)
     print("Không có GitHub workflows nào đang chạy")
